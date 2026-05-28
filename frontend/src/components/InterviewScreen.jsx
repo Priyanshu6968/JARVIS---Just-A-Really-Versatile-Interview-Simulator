@@ -4,67 +4,314 @@ import React, {
 import { Excalidraw, exportToBlob } from '@excalidraw/excalidraw';
 import { speakText, stopSpeaking, createRecognition } from '../utils/voice';
 
+// ─── Phase metadata ───────────────────────────────────────────────────────────
 const PHASE_META = {
-  1: { label: 'Gathering Requirements',  short: 'Requirements',  color: 'text-blue-400' },
-  2: { label: 'Clarifying Requirements', short: 'Clarifying',    color: 'text-indigo-400' },
-  3: { label: 'Class Diagram',           short: 'Class Diagram', color: 'text-violet-400' },
-  4: { label: 'Schema Design',           short: 'Schema Design', color: 'text-purple-400' },
+  1: { label: 'Gathering Requirements',  short: 'Requirements',  color: '#60a5fa' },
+  2: { label: 'Clarifying Requirements', short: 'Clarifying',    color: '#818cf8' },
+  3: { label: 'Class Diagram',           short: 'Class Diagram', color: '#a78bfa' },
+  4: { label: 'Schema Design',           short: 'Schema Design', color: '#c084fc' },
 };
 
-// ── Animated waveform ──────────────────────────────────────────────────────────
-function Waveform({ color = 'bg-electric-500' }) {
+// ─── Pre-compute 42 frequency-bar configs ────────────────────────────────────
+// Shape: sine envelope so middle bars are tallest (like a real EQ spectrum)
+const FREQ_BARS = Array.from({ length: 42 }, (_, i) => {
+  const t     = i / 41;
+  const sine  = Math.sin(t * Math.PI);               // 0 → 1 → 0
+  const noise = ((i * 7919 + 13) % 8) - 4;           // deterministic ±4px noise
+  const maxH  = Math.max(8, Math.round(sine * 44 + noise + 8)); // 8–52 px
+  return {
+    maxH,
+    dur: +(0.38 + (i % 13) * 0.082).toFixed(3),      // 0.38s – 1.39s
+    del: +((i * 0.061) % 1.2).toFixed(3),             // 0 – 1.2s stagger
+  };
+});
+
+// ─── Interpolate bar colour across the spectrum ───────────────────────────────
+function barColour(i, total, mode) {
+  const t = i / (total - 1); // 0..1
+  if (mode === 'speak') {
+    // electric-blue → indigo → violet
+    const r = Math.round(96  + t * (167 - 96));
+    const g = Math.round(165 + t * (139 - 165));
+    const b = Math.round(250 + t * (250 - 250));
+    return `rgb(${r},${g},${b})`;
+  }
+  if (mode === 'mic') {
+    // red → rose → pink
+    return `hsl(${350 + t * 30}, 90%, 65%)`;
+  }
+  return `rgba(55,65,81,0.5)`; // idle grey
+}
+
+// ─── Frequency visualizer ─────────────────────────────────────────────────────
+function FreqVisualizer({ isSpeaking, micActive }) {
+  const mode = isSpeaking ? 'speak' : micActive ? 'mic' : 'idle';
+  const active = mode !== 'idle';
+
   return (
-    <div className="flex items-center gap-[3px] h-6">
-      {[1,2,3,4,5].map(i => (
-        <div key={i} className={`wave-bar ${color} rounded-full`} />
-      ))}
+    <div
+      className="flex items-end gap-[2px] w-full overflow-hidden"
+      style={{ height: 52 }}
+      aria-hidden="true"
+    >
+      {FREQ_BARS.map((bar, i) => {
+        const colour = barColour(i, FREQ_BARS.length, mode);
+        return (
+          <div
+            key={i}
+            style={{
+              width: 3,
+              height: bar.maxH,
+              background: colour,
+              borderRadius: 3,
+              flexShrink: 0,
+              transformOrigin: 'bottom',
+              boxShadow: active ? `0 0 5px 1px ${colour}88` : 'none',
+              // When active: run freqPulse with bar-specific duration+delay
+              animation: active
+                ? `freqPulse ${bar.dur}s ease-in-out ${bar.del}s infinite`
+                : 'none',
+              // Idle: collapse to a thin flat line
+              transform: active ? undefined : 'scaleY(0.07)',
+              transition: active ? 'none' : 'transform 0.6s ease, box-shadow 0.4s ease',
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
 
-// ── Typing indicator ──────────────────────────────────────────────────────────
+// ─── Glowing Neon Canvas Soundwave ──────────────────────────────────────────
+function VoiceWavesCanvas({ isSpeaking, micActive }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    let phases = [0, 0.7, 1.4];
+    let targetAmplitude = 0;
+    let currentAmplitude = 0;
+    let particles = [];
+    const maxParticles = 25;
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const width = canvas.width / window.devicePixelRatio;
+      const height = canvas.height / window.devicePixelRatio;
+      const centerY = height / 2;
+
+      // Smooth amplitude based on state
+      if (isSpeaking) {
+        targetAmplitude = 22;
+      } else if (micActive) {
+        targetAmplitude = 16;
+      } else {
+        targetAmplitude = 2.5; // low standby ripple
+      }
+
+      currentAmplitude += (targetAmplitude - currentAmplitude) * 0.1;
+      const baseSpeed = isSpeaking ? 0.08 : micActive ? 0.05 : 0.015;
+
+      const waves = [
+        {
+          color: isSpeaking ? 'rgba(96, 165, 250, 0.7)' : micActive ? 'rgba(248, 113, 113, 0.7)' : 'rgba(55, 65, 81, 0.25)',
+          freq: 0.012,
+          speed: baseSpeed * 1.4,
+          lineWidth: 2,
+          glow: isSpeaking ? '#3b82f6' : micActive ? '#ef4444' : null
+        },
+        {
+          color: isSpeaking ? 'rgba(129, 140, 248, 0.5)' : micActive ? 'rgba(251, 146, 60, 0.5)' : 'rgba(55, 65, 81, 0.15)',
+          freq: 0.022,
+          speed: baseSpeed * 1.0,
+          lineWidth: 1.5,
+          glow: null
+        },
+        {
+          color: isSpeaking ? 'rgba(167, 139, 250, 0.4)' : micActive ? 'rgba(244, 63, 94, 0.4)' : 'rgba(55, 65, 81, 0.1)',
+          freq: 0.007,
+          speed: baseSpeed * 0.7,
+          lineWidth: 1,
+          glow: null
+        }
+      ];
+
+      waves.forEach((w, idx) => {
+        phases[idx] += w.speed;
+        ctx.beginPath();
+        ctx.lineWidth = w.lineWidth;
+        ctx.strokeStyle = w.color;
+
+        if (w.glow) {
+          ctx.shadowBlur = 14;
+          ctx.shadowColor = w.glow;
+        } else {
+          ctx.shadowBlur = 0;
+        }
+
+        for (let x = 0; x < width; x++) {
+          // Sine envelope to fade boundaries perfectly
+          const env = Math.sin((x / width) * Math.PI);
+          const angle = x * w.freq + phases[idx];
+          // Micro audio ripples when active
+          const noise = isSpeaking ? (Math.sin(x * 0.12 + phases[0] * 2.5) * 1.5) : 0;
+          const y = centerY + (Math.sin(angle) * currentAmplitude + noise) * env;
+
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      });
+
+      // Drifting energetic micro-particles when active
+      const active = isSpeaking || micActive;
+      if (active && Math.random() < 0.2 && particles.length < maxParticles) {
+        particles.push({
+          x: Math.random() * width,
+          y: centerY + (Math.random() - 0.5) * currentAmplitude * 1.2,
+          vx: (Math.random() - 0.5) * 0.7,
+          vy: -Math.random() * 1.0 - 0.4,
+          size: Math.random() * 2 + 1,
+          alpha: 1,
+          color: isSpeaking ? '96, 165, 250' : '248, 113, 113'
+        });
+      }
+
+      ctx.shadowBlur = 0;
+      particles.forEach((p, i) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= 0.016;
+        if (p.alpha <= 0 || p.x < 0 || p.x > width) {
+          particles.splice(i, 1);
+          return;
+        }
+        ctx.fillStyle = `rgba(${p.color}, ${p.alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isSpeaking, micActive]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ opacity: 0.8 }}
+    />
+  );
+}
+
+// ─── JARVIS orb with sonar rings ──────────────────────────────────────────────
+function JARVISOrb({ isSpeaking, micActive }) {
+  return (
+    <div className="relative flex-shrink-0 flex items-center justify-center"
+      style={{ width: 72, height: 72 }}>
+
+      {/* Three staggered sonar rings — only while speaking */}
+      {isSpeaking && [0, 1, 2].map(i => (
+        <div
+          key={i}
+          className="absolute inset-0 rounded-full border border-blue-400"
+          style={{
+            animation: 'sonarExpand 2.1s ease-out infinite',
+            animationDelay: `${i * 0.7}s`,
+            opacity: 0,
+          }}
+        />
+      ))}
+
+      {/* Single mic ring — only while listening */}
+      {micActive && !isSpeaking && (
+        <div
+          className="absolute inset-0 rounded-full border border-red-400"
+          style={{ animation: 'micPulse 1.6s ease-out infinite', opacity: 0 }}
+        />
+      )}
+
+      {/* Core orb */}
+      <div
+        className={`absolute inset-0 rounded-full flex items-center justify-center select-none
+          ${isSpeaking ? 'orb-speak' : 'orb-idle'}`}
+        style={{
+          background: isSpeaking
+            ? 'radial-gradient(circle at 32% 28%, #93c5fd, #3b82f6 40%, #6366f1 75%, #4f46e5)'
+            : 'radial-gradient(circle at 32% 28%, #60a5fa, #2563eb 50%, #4338ca)',
+          transition: 'background 0.5s ease',
+        }}
+      >
+        {/* Specular highlight */}
+        <div
+          className="absolute rounded-full"
+          style={{
+            width: 18, height: 18,
+            top: 10, left: 12,
+            background: 'radial-gradient(circle, rgba(255,255,255,0.55), transparent 70%)',
+          }}
+        />
+        {/* Letter */}
+        <span
+          className="relative z-10 font-black text-white"
+          style={{ fontSize: 22, letterSpacing: '-0.5px', textShadow: '0 1px 8px rgba(0,0,0,0.4)' }}
+        >
+          J
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Typing dots ──────────────────────────────────────────────────────────────
 function TypingDots() {
   return (
-    <div className="flex items-center gap-1 px-4 py-3 glass rounded-2xl rounded-tl-sm self-start">
-      <div className="w-2 h-2 rounded-full bg-electric-500 dot1" />
-      <div className="w-2 h-2 rounded-full bg-electric-500 dot2" />
-      <div className="w-2 h-2 rounded-full bg-electric-500 dot3" />
-    </div>
-  );
-}
-
-// ── Chat bubble ───────────────────────────────────────────────────────────────
-function Bubble({ msg, candidateName }) {
-  const isJ = msg.role === 'assistant';
-  return (
-    <div className={`flex flex-col max-w-[84%] fade-up ${isJ ? 'self-start' : 'self-end'}`}>
-      <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-        isJ
-          ? 'glass text-navy-100 rounded-tl-sm'
-          : 'bg-electric-600 text-white rounded-tr-sm'
-      }`}>
-        {msg.text}
+    <div className="self-start flex flex-col gap-1 fade-up">
+      <div className="flex items-center gap-1 px-4 py-3 glass rounded-2xl rounded-tl-sm">
+        <div className="w-2 h-2 rounded-full bg-electric-500 dot1" />
+        <div className="w-2 h-2 rounded-full bg-electric-500 dot2" />
+        <div className="w-2 h-2 rounded-full bg-electric-500 dot3" />
       </div>
-      <span className={`text-[10px] text-navy-600 mt-1 ${isJ ? 'ml-1' : 'mr-1 self-end'}`}>
-        {isJ ? 'JARVIS' : candidateName}
-      </span>
+      <span className="text-[10px] text-navy-700 ml-1">JARVIS is thinking…</span>
     </div>
   );
 }
 
-// ── Phase banner ──────────────────────────────────────────────────────────────
+// ─── Phase banner ─────────────────────────────────────────────────────────────
 function PhaseBanner({ text, onDone }) {
-  useEffect(() => { const t = setTimeout(onDone, 2500); return () => clearTimeout(t); }, []);
+  useEffect(() => { const t = setTimeout(onDone, 2600); return () => clearTimeout(t); }, []);
   return (
-    <div className="absolute inset-x-0 top-0 z-40 flex justify-center">
-      <div className="phase-banner mt-16 px-6 py-3 bg-gradient-to-r from-electric-600 to-indigo-600 rounded-2xl text-white font-bold text-sm shadow-2xl shadow-electric-600/30 flex items-center gap-2">
+    <div className="absolute inset-x-0 top-0 z-40 flex justify-center pointer-events-none">
+      <div className="phase-banner mt-16 px-6 py-3 rounded-2xl text-white font-bold text-sm flex items-center gap-2 shadow-2xl"
+        style={{ background: 'linear-gradient(135deg, #2563eb, #6366f1)', boxShadow: '0 8px 32px rgba(59,130,246,0.4)' }}>
         <span className="animate-pulse">⚡</span> {text}
       </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function InterviewScreen({
   session, phase, messages, isLoading, isSpeaking, setIsSpeaking,
   onSendMessage, onGetFeedback, requirementsSummary, phaseBanner, onBannerDone
@@ -78,41 +325,44 @@ export default function InterviewScreen({
   const [excalidrawAPI, setExcalidrawAPI] = useState(null);
   const [noSpeechAPI,   setNoSpeechAPI]   = useState(false);
 
-  const bottomRef  = useRef(null);
-  const recRef     = useRef(null);
-  const isMutedRef = useRef(false);
-  const sendRef    = useRef(null); // stable ref to latest handleSend
+  const bottomRef      = useRef(null);
+  const recRef         = useRef(null);
+  const isMutedRef     = useRef(false);
+  const sendRef        = useRef(null);
+  const lastSpokenIdx  = useRef(-1);
 
   isMutedRef.current = isMuted;
+
+  const meta      = PHASE_META[phase] || PHASE_META[1];
+  const showCanvas = phase >= 3;
 
   // ── timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const t = setInterval(() => setElapsed(s => s + 1), 1000);
     return () => clearInterval(t);
   }, []);
-  const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  const fmtTime = s =>
+    `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-  // ── scroll to bottom on new messages ──────────────────────────────────────
+  // ── auto-scroll ────────────────────────────────────────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
   // ── speak new assistant messages ───────────────────────────────────────────
-  const lastSpokenIndex = useRef(-1);
   useEffect(() => {
     const last = messages.at(-1);
     if (!last || last.role !== 'assistant') return;
     const idx = messages.length - 1;
-    if (idx === lastSpokenIndex.current) return;
-    lastSpokenIndex.current = idx;
-
+    if (idx === lastSpokenIdx.current) return;
+    lastSpokenIdx.current = idx;
     speakText(last.text, {
       isMuted: isMutedRef.current,
       onStart: () => setIsSpeaking(true),
       onEnd:   () => setIsSpeaking(false),
       onError: () => setIsSpeaking(false),
     });
-  }, [messages]); // intentionally NOT listing isMuted
+  }, [messages]);
 
   useEffect(() => () => stopSpeaking(), []);
 
@@ -123,16 +373,14 @@ export default function InterviewScreen({
       const elements = excalidrawAPI.getSceneElements();
       if (!elements?.length) return null;
       const blob = await exportToBlob({
-        elements,
-        appState: excalidrawAPI.getAppState(),
-        files:    excalidrawAPI.getFiles(),
-        mimeType: 'image/png',
+        elements, appState: excalidrawAPI.getAppState(),
+        files: excalidrawAPI.getFiles(), mimeType: 'image/png',
       });
       return new Promise(res => {
-        const reader = new FileReader();
-        reader.onloadend = () => res(reader.result.split(',')[1]);
-        reader.onerror   = () => res(null);
-        reader.readAsDataURL(blob);
+        const r = new FileReader();
+        r.onloadend = () => res(r.result.split(',')[1]);
+        r.onerror   = () => res(null);
+        r.readAsDataURL(blob);
       });
     } catch { return null; }
   }, [excalidrawAPI, phase]);
@@ -148,7 +396,6 @@ export default function InterviewScreen({
     onSendMessage(t, img);
   }, [inputText, isLoading, captureCanvas, onSendMessage]);
 
-  // keep sendRef always pointing to latest
   sendRef.current = handleSend;
 
   // ── mic toggle ─────────────────────────────────────────────────────────────
@@ -157,27 +404,16 @@ export default function InterviewScreen({
       recRef.current?.stop();
       return;
     }
-
     const rec = createRecognition({
-      onInterim: t => setLiveText(t),
-      onFinal:   () => {},
-      onEnd: finalText => {
+      onInterim: t  => setLiveText(t),
+      onEnd: finalT => {
         setMicActive(false);
         setLiveText('');
-        if (finalText) sendRef.current(finalText);
+        if (finalT) sendRef.current(finalT);
       },
-      onError: err => {
-        console.error('SpeechRecognition error:', err);
-        setMicActive(false);
-        setLiveText('');
-      },
+      onError: () => { setMicActive(false); setLiveText(''); },
     });
-
-    if (!rec) {
-      setNoSpeechAPI(true);
-      return;
-    }
-
+    if (!rec) { setNoSpeechAPI(true); return; }
     recRef.current = rec;
     stopSpeaking();
     setIsSpeaking(false);
@@ -188,56 +424,64 @@ export default function InterviewScreen({
 
   // ── keyboard shortcuts ─────────────────────────────────────────────────────
   useEffect(() => {
-    const onKeyDown = e => {
+    const fn = e => {
       const tag = document.activeElement?.tagName;
       if (e.code === 'Space' && tag !== 'INPUT' && tag !== 'TEXTAREA') {
         e.preventDefault();
         toggleMic();
       }
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
   }, [toggleMic]);
 
-  // ── derived ────────────────────────────────────────────────────────────────
-  const meta = PHASE_META[phase] || PHASE_META[1];
-  const showCanvas = phase >= 3;
-
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-navy-950 relative">
 
       {phaseBanner && <PhaseBanner text={phaseBanner} onDone={onBannerDone} />}
 
-      {/* ══ TOP BAR ════════════════════════════════════════════════════════ */}
-      <header className="h-14 shrink-0 border-b border-navy-800 bg-navy-900/80 backdrop-blur-sm flex items-center px-4 gap-4 z-10">
+      {/* ══ TOPBAR ═══════════════════════════════════════════════════════════ */}
+      <header className="h-14 shrink-0 border-b border-navy-800 flex items-center px-4 gap-3 z-10"
+        style={{ background: 'rgba(13,17,23,0.9)', backdropFilter: 'blur(14px)' }}>
 
         {/* Logo */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-electric-600 to-indigo-500 flex items-center justify-center text-white font-black text-sm">J</div>
-          <span className="text-white font-extrabold tracking-wide hidden sm:block">JARVIS</span>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-black text-sm shadow-lg"
+            style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>J</div>
+          <span className="text-white font-extrabold tracking-wide hidden sm:block text-sm">JARVIS</span>
         </div>
 
         <div className="w-px h-5 bg-navy-700 shrink-0" />
 
         {/* Phase stepper */}
-        <div className="flex items-center gap-1 overflow-x-auto flex-1">
-          {[1,2,3,4].map(i => {
+        <div className="flex items-center gap-0.5 flex-1 overflow-x-auto">
+          {[1, 2, 3, 4].map(i => {
             const done   = phase > i;
             const active = phase === i;
+            const m      = PHASE_META[i];
             return (
               <React.Fragment key={i}>
-                {i > 1 && <div className={`w-6 h-px shrink-0 ${done ? 'bg-electric-600' : 'bg-navy-700'}`} />}
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-                  active ? 'bg-electric-600/20 border border-electric-600/50 text-electric-400'
-                    : done ? 'text-green-400'
-                    : 'text-navy-600'
-                }`}>
-                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                    active ? 'bg-electric-600 text-white'
-                      : done ? 'bg-green-600 text-white'
-                      : 'bg-navy-800 text-navy-600'
-                  }`}>{done ? '✓' : i}</span>
-                  <span className="hidden sm:block">{PHASE_META[i].short}</span>
+                {i > 1 && (
+                  <div className="w-5 h-px shrink-0 mx-0.5"
+                    style={{ background: done ? m.color : '#21262d' }} />
+                )}
+                <div
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold shrink-0 transition-all"
+                  style={{
+                    background: active ? `${m.color}18` : 'transparent',
+                    border: active ? `1px solid ${m.color}60` : '1px solid transparent',
+                    color: active ? m.color : done ? '#4ade80' : '#484f58',
+                  }}
+                >
+                  <span
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold"
+                    style={{
+                      background: active ? m.color : done ? '#16a34a' : '#21262d',
+                      color: active || done ? 'white' : '#484f58',
+                    }}
+                  >{done ? '✓' : i}</span>
+                  <span className="hidden sm:block">{m.short}</span>
                 </div>
               </React.Fragment>
             );
@@ -246,41 +490,43 @@ export default function InterviewScreen({
 
         {/* Right controls */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Timer */}
-          <div className="font-mono text-xs text-navy-400 bg-navy-800 rounded-lg px-2.5 py-1 border border-navy-700">
+          <div className="font-mono text-xs bg-navy-800 border border-navy-700 rounded-lg px-2.5 py-1 text-navy-400">
             ⏱ {fmtTime(elapsed)}
           </div>
-
-          {/* Requirements drawer toggle */}
           <button id="req-drawer-btn" onClick={() => setDrawerOpen(v => !v)}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
-              drawerOpen ? 'bg-electric-600/20 border-electric-600/50 text-electric-400'
-                : 'border-navy-700 text-navy-400 hover:text-white hover:bg-navy-800'
-            }`}>
+            className="px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all"
+            style={{
+              background: drawerOpen ? 'rgba(59,130,246,0.15)' : 'transparent',
+              borderColor: drawerOpen ? 'rgba(59,130,246,0.5)' : '#21262d',
+              color: drawerOpen ? '#60a5fa' : '#6b7280',
+            }}>
             📋 Req's
           </button>
-
-          {/* Mute */}
-          <button id="mute-btn" onClick={() => { setIsMuted(m => { if (!m) stopSpeaking(); return !m; }); }}
-            className={`p-2 rounded-xl border transition-all ${
-              isMuted ? 'bg-red-500/10 border-red-500/40 text-red-400'
-                : 'border-navy-700 text-navy-400 hover:text-white hover:bg-navy-800'
-            }`}
+          <button id="mute-btn"
+            onClick={() => { setIsMuted(m => { if (!m) stopSpeaking(); return !m; }); }}
+            className="p-2 rounded-xl border transition-all"
+            style={{
+              background: isMuted ? 'rgba(239,68,68,0.1)' : 'transparent',
+              borderColor: isMuted ? 'rgba(239,68,68,0.4)' : '#21262d',
+              color: isMuted ? '#f87171' : '#6b7280',
+            }}
             title={isMuted ? 'Unmute JARVIS' : 'Mute JARVIS'}>
             {isMuted ? '🔇' : '🔊'}
           </button>
         </div>
       </header>
 
-      {/* ══ BODY ═══════════════════════════════════════════════════════════ */}
+      {/* ══ BODY ═══════════════════════════════════════════════════════════════ */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* LEFT: Excalidraw canvas */}
+        {/* LEFT: Excalidraw (phases 3 & 4) */}
         {showCanvas && (
-          <div className="flex-1 border-r border-navy-800 flex flex-col bg-[#121212] relative">
+          <div className="flex-1 border-r border-navy-800 flex flex-col bg-[#0d1117] relative">
             <div className="absolute top-2 left-2 z-10 pointer-events-none">
-              <span className="glass-blue text-[10px] px-2.5 py-1 rounded-lg text-electric-400 font-semibold flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-electric-500 animate-pulse" />
+              <span className="glass-blue text-[10px] px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5"
+                style={{ color: meta.color }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse inline-block"
+                  style={{ background: meta.color }} />
                 {meta.label} · Canvas
               </span>
             </div>
@@ -294,82 +540,139 @@ export default function InterviewScreen({
           </div>
         )}
 
-        {/* RIGHT: Conversation panel */}
-        <div className={`flex flex-col ${showCanvas ? 'w-[420px] shrink-0' : 'flex-1'} h-full bg-navy-950`}>
+        {/* RIGHT: Conversation */}
+        <div className={`flex flex-col bg-navy-950 ${showCanvas ? 'w-[420px] shrink-0' : 'flex-1'} h-full`}>
 
           {/* Phase badge */}
-          <div className="shrink-0 px-4 py-2 border-b border-navy-800 bg-navy-900/50 flex items-center gap-2">
-            <span className={`text-xs font-bold ${meta.color}`}>Phase {phase}</span>
+          <div className="shrink-0 px-4 py-2 border-b border-navy-800 flex items-center gap-2"
+            style={{ background: 'rgba(13,17,23,0.6)' }}>
+            <span className="text-xs font-bold" style={{ color: meta.color }}>Phase {phase}</span>
             <span className="text-navy-700">·</span>
             <span className="text-xs text-navy-400">{meta.label}</span>
           </div>
 
-          {/* No speech API warning */}
           {noSpeechAPI && (
-            <div className="shrink-0 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-amber-400 text-xs flex items-center gap-2">
-              ⚠️ Voice input not supported in this browser — use text input instead.
+            <div className="shrink-0 px-4 py-2 border-b border-amber-500/30 text-amber-400 text-xs flex items-center gap-2"
+              style={{ background: 'rgba(245,158,11,0.05)' }}>
+              ⚠️ Voice input not supported — please use Chrome for mic features.
             </div>
           )}
 
-          {/* ── Messages ── */}
+          {/* ── Chat messages ── */}
           <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-
-            {/* Context card */}
             {messages.length === 0 && !isLoading && (
-              <div className="glass-blue rounded-2xl p-4 text-xs text-navy-300 leading-relaxed">
-                <p className="font-bold text-electric-400 mb-1.5 text-sm">🎯 {session.problem.title}</p>
-                <p>JARVIS will conduct your LLD interview in 4 phases. Respond naturally — via voice or text.</p>
+              <div className="glass-blue rounded-2xl p-4 text-xs text-navy-300 leading-relaxed fade-up">
+                <p className="font-bold mb-1" style={{ color: meta.color }}>🎯 {session.problem.title}</p>
+                <p>JARVIS will interview you in 4 phases. Respond via voice or text.</p>
               </div>
             )}
 
-            {messages.map((msg, i) => (
-              <Bubble key={i} msg={msg} candidateName={session.name} />
-            ))}
+            {messages.map((msg, i) => {
+              const isJ = msg.role === 'assistant';
+              return (
+                <div key={i} className={`flex flex-col max-w-[84%] fade-up ${isJ ? 'self-start' : 'self-end'}`}>
+                  <div
+                    className="px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap"
+                    style={isJ
+                      ? { background: 'rgba(13,17,23,0.8)', border: '1px solid rgba(255,255,255,0.07)', color: '#e2e8f0', borderRadius: '1rem 1rem 1rem 3px' }
+                      : { background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: 'white', borderRadius: '1rem 1rem 3px 1rem' }
+                    }
+                  >
+                    {msg.text}
+                  </div>
+                  <span className={`text-[10px] text-navy-600 mt-1 ${isJ ? 'ml-1' : 'mr-1 self-end'}`}>
+                    {isJ ? 'JARVIS' : session.name}
+                  </span>
+                </div>
+              );
+            })}
 
-            {isLoading && (
-              <div className="self-start fade-up">
-                <TypingDots />
-                <span className="text-[10px] text-navy-700 mt-1 ml-1">JARVIS is thinking…</span>
-              </div>
-            )}
-
+            {isLoading && <TypingDots />}
             <div ref={bottomRef} />
           </div>
 
-          {/* ── JARVIS orb + waveform ── */}
-          <div className="shrink-0 border-t border-navy-800 bg-navy-900/50 px-4 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-electric-500 to-indigo-600 flex items-center justify-center text-white font-black text-base transition-all duration-300 ${isSpeaking ? 'orb-speak' : 'orb-idle'}`}>
-                J
-              </div>
-              <div>
-                <p className="text-xs font-bold text-white">JARVIS</p>
-                <p className="text-[10px] text-navy-500">
-                  {isSpeaking ? 'Speaking…' : micActive ? 'Listening…' : 'Ready'}
-                </p>
-              </div>
-            </div>
+          {/* ══════════════════════════════════════════════════════════════════
+              JARVIS DYNAMIC VISUALIZER HUD
+          ══════════════════════════════════════════════════════════════════ */}
+          <div
+            className="shrink-0 border-t border-navy-800 relative overflow-hidden"
+            style={{
+              background: isSpeaking
+                ? 'linear-gradient(180deg, rgba(8, 17, 36, 0.98) 0%, rgba(11, 22, 46, 0.96) 100%)'
+                : micActive
+                  ? 'linear-gradient(180deg, rgba(24, 10, 10, 0.98) 0%, rgba(42, 12, 12, 0.96) 100%)'
+                  : 'rgba(10, 14, 22, 0.85)',
+              transition: 'background 0.6s ease',
+            }}
+          >
+            {/* Animated background radial glow */}
+            {(isSpeaking || micActive) && (
+              <div
+                className="absolute inset-0 pointer-events-none hud-glow"
+                style={{
+                  background: isSpeaking
+                    ? 'radial-gradient(ellipse at 50% 50%, rgba(37, 99, 235, 0.15) 0%, transparent 80%)'
+                    : 'radial-gradient(ellipse at 50% 50%, rgba(239, 68, 68, 0.15) 0%, transparent 80%)',
+                }}
+              />
+            )}
 
-            <div className="flex items-center gap-2">
-              {isSpeaking && <Waveform color="bg-electric-500" />}
-              {micActive   && <Waveform color="bg-red-400" />}
-              {!isSpeaking && !micActive && (
-                <span className="text-[10px] text-navy-600 bg-navy-800 border border-navy-700 px-2 py-0.5 rounded-full font-mono">[Space] mic</span>
-              )}
+            {/* Glowing Neon Canvas Soundwave */}
+            <VoiceWavesCanvas isSpeaking={isSpeaking} micActive={micActive} />
+
+            <div className="relative z-10 px-4 pt-3 pb-3 flex items-end gap-4">
+
+              {/* JARVIS orb */}
+              <JARVISOrb isSpeaking={isSpeaking} micActive={micActive} />
+
+              {/* Right column: label + visualizer */}
+              <div className="flex-1 flex flex-col gap-1.5 min-w-0 pb-1">
+
+                {/* Status label */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-white">JARVIS</p>
+                    <p
+                      className="text-[10px] font-semibold tracking-wide transition-colors duration-400"
+                      style={{
+                        color: isSpeaking ? '#60a5fa'
+                          : micActive    ? '#f87171'
+                          : '#374151',
+                      }}
+                    >
+                      {isSpeaking
+                        ? '▶ Speaking'
+                        : micActive
+                          ? '◉ Listening'
+                          : '— Standby'}
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-navy-800 font-mono hidden sm:block">
+                    [Space] mic
+                  </span>
+                </div>
+
+                {/* Frequency visualizer */}
+                <FreqVisualizer isSpeaking={isSpeaking} micActive={micActive} />
+              </div>
             </div>
           </div>
 
           {/* ── Input area ── */}
-          <div className="shrink-0 p-3 border-t border-navy-800 bg-navy-900 flex flex-col gap-2">
+          <div className="shrink-0 p-3 border-t border-navy-800 flex flex-col gap-2"
+            style={{ background: 'rgba(13,17,23,0.95)' }}>
 
             {/* Live transcript */}
             {micActive && (
-              <div className="fade-up bg-red-500/5 border border-red-500/20 rounded-xl px-3 py-2">
+              <div className="fade-up rounded-xl px-3 py-2 border"
+                style={{ background: 'rgba(239,68,68,0.04)', borderColor: 'rgba(239,68,68,0.2)' }}>
                 <div className="flex items-center gap-1.5 mb-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
                   <span className="text-[10px] font-bold text-red-400">Listening…</span>
                 </div>
-                <p className="text-xs text-navy-200 italic min-h-[16px]">{liveText || 'Say something…'}</p>
+                <p className="text-xs text-navy-200 italic min-h-[16px]">
+                  {liveText || 'Start speaking…'}
+                </p>
               </div>
             )}
 
@@ -379,13 +682,23 @@ export default function InterviewScreen({
                 id="mic-btn"
                 onClick={toggleMic}
                 disabled={isLoading}
-                title={micActive ? 'Stop recording (Space)' : 'Start voice input (Space)'}
-                className={`shrink-0 p-3 rounded-xl border transition-all active:scale-95 disabled:opacity-40 ${
-                  micActive
-                    ? 'bg-red-500 border-red-500 text-white shadow-lg shadow-red-500/20 animate-pulse'
-                    : 'border-navy-700 bg-navy-950 text-navy-400 hover:text-white hover:border-navy-600'
-                }`}>
+                title={micActive ? 'Stop (Space)' : 'Start mic (Space)'}
+                className="shrink-0 p-3 rounded-xl border transition-all active:scale-95 disabled:opacity-40 relative"
+                style={{
+                  background: micActive ? '#ef4444' : 'rgba(13,17,23,0.8)',
+                  borderColor: micActive ? '#ef4444' : '#21262d',
+                  color: micActive ? 'white' : '#6b7280',
+                  boxShadow: micActive ? '0 0 16px 4px rgba(239,68,68,0.3)' : 'none',
+                  transition: 'all 0.2s ease',
+                }}
+              >
                 {micActive ? '⏹' : '🎙️'}
+                {micActive && (
+                  <span
+                    className="absolute inset-0 rounded-xl"
+                    style={{ animation: 'micPulse 1.4s ease-out infinite', border: '1px solid #f87171', opacity: 0 }}
+                  />
+                )}
               </button>
 
               {/* Text input */}
@@ -397,39 +710,57 @@ export default function InterviewScreen({
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                 disabled={isLoading}
                 placeholder={micActive ? 'Listening via mic…' : 'Type your answer or press Space to speak…'}
-                className="flex-1 min-w-0 bg-navy-950 border border-navy-700 focus:border-electric-500 focus:outline-none focus:ring-2 focus:ring-electric-500/20 rounded-xl px-4 py-3 text-sm text-white placeholder-navy-600 disabled:opacity-40 transition-all"
+                className="flex-1 min-w-0 rounded-xl px-4 py-3 text-sm text-white placeholder-navy-600 disabled:opacity-40 transition-all border"
+                style={{
+                  background: 'rgba(6,13,26,0.8)',
+                  borderColor: '#21262d',
+                  outline: 'none',
+                }}
+                onFocus={e  => (e.target.style.borderColor = '#3b82f6')}
+                onBlur={e   => (e.target.style.borderColor = '#21262d')}
               />
 
-              {/* Send button */}
+              {/* Send */}
               <button
                 id="send-btn"
                 onClick={() => handleSend()}
                 disabled={!inputText.trim() || isLoading}
-                className="shrink-0 p-3 bg-electric-600 hover:bg-electric-500 text-white rounded-xl active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                className="shrink-0 p-3 rounded-xl text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                style={{
+                  background: 'linear-gradient(135deg,#2563eb,#1d4ed8)',
+                  boxShadow: inputText.trim() ? '0 0 12px rgba(37,99,235,0.4)' : 'none',
+                }}
+              >
                 ➤
               </button>
             </div>
 
             {/* Footer row */}
-            <div className="flex justify-between items-center text-[10px] px-0.5">
-              <span className="text-navy-700">Flipkart SDE-2 · LLD Mock</span>
+            <div className="flex justify-between items-center px-0.5">
+              <span className="text-[10px] text-navy-800">Flipkart SDE-2 · LLD Mock</span>
               <button
                 id="feedback-btn"
                 onClick={onGetFeedback}
-                className="text-electric-500 hover:text-electric-400 font-semibold flex items-center gap-1 transition-colors">
+                className="text-xs font-semibold flex items-center gap-1 transition-colors"
+                style={{ color: '#3b82f6' }}
+                onMouseEnter={e => (e.target.style.color = '#60a5fa')}
+                onMouseLeave={e => (e.target.style.color = '#3b82f6')}
+              >
                 🏆 Get Scorecard
               </button>
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* ══ REQUIREMENTS DRAWER ═════════════════════════════════════════════ */}
-      <div className={`fixed inset-y-0 right-0 z-30 w-72 bg-navy-900 border-l border-navy-800 flex flex-col shadow-2xl transition-transform duration-300 ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      {/* ══ REQUIREMENTS DRAWER ═════════════════════════════════════════════════ */}
+      <div
+        className={`fixed inset-y-0 right-0 z-30 w-72 flex flex-col shadow-2xl transition-transform duration-300 ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        style={{ background: 'rgba(10,16,28,0.98)', borderLeft: '1px solid #21262d', backdropFilter: 'blur(16px)' }}
+      >
         <div className="p-4 border-b border-navy-800 flex items-center justify-between">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">📋 Requirements</h3>
-          <button onClick={() => setDrawerOpen(false)} className="text-navy-500 hover:text-white text-lg leading-none">✕</button>
+          <button onClick={() => setDrawerOpen(false)} className="text-navy-600 hover:text-white text-lg leading-none">✕</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 text-xs">
           <div>
@@ -442,14 +773,14 @@ export default function InterviewScreen({
               <p className="text-navy-300 leading-relaxed whitespace-pre-wrap">{requirementsSummary}</p>
             </div>
           ) : (
-            <div className="border border-dashed border-navy-800 rounded-xl p-4 text-center text-navy-600">
-              Requirements will appear here after Phase 1 & 2.
+            <div className="rounded-xl p-4 text-center text-navy-700 border border-dashed border-navy-800">
+              Requirements will appear after Phases 1 & 2.
             </div>
           )}
           <div>
-            <p className="text-[10px] font-bold text-navy-600 uppercase tracking-wider mb-1.5">Nuances to Remember</p>
+            <p className="text-[10px] font-bold text-navy-600 uppercase tracking-wider mb-1.5">Key Nuances</p>
             <ul className="list-disc pl-4 text-navy-400 flex flex-col gap-1">
-              {session.problem.nuances.map((n,i) => <li key={i}>{n}</li>)}
+              {session.problem.nuances?.map((n, i) => <li key={i}>{n}</li>)}
             </ul>
           </div>
         </div>
