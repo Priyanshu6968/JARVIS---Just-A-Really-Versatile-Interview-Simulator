@@ -225,6 +225,240 @@ function VoiceWavesCanvas({ isSpeaking, micActive }) {
   );
 }
 
+// ─── Holographic 3D Cyber-Terrain Grid Visualizer ────────────────────────────
+function VoiceWavesCanvas3D({ isSpeaking, micActive }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+    let width = 0;
+    let height = 0;
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+      canvas.width = width * window.devicePixelRatio;
+      canvas.height = height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Grid details: larger density for beautiful horizon details
+    const rows = 26;
+    const cols = 26;
+    const spacing = 52; // 3D spacing factor
+
+    let angleX = 0.95; // Downward tilt perspective angle
+    let angleY = 0.4;  // Yaw rotation angles
+    let time = 0;
+
+    let targetAmplitude = 0;
+    let currentAmplitude = 0;
+    let targetScaleZ = 0;
+    let currentScaleZ = 0;
+
+    const animate = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      // Amplitude heights based on JARVIS voice activation
+      if (isSpeaking) {
+        targetAmplitude = 32;
+        targetScaleZ = 1.35;
+      } else if (micActive) {
+        targetAmplitude = 24;
+        targetScaleZ = 1.0;
+      } else {
+        targetAmplitude = 5; // gentle standby breath
+        targetScaleZ = 0.35;
+      }
+
+      currentAmplitude += (targetAmplitude - currentAmplitude) * 0.08;
+      currentScaleZ += (targetScaleZ - currentScaleZ) * 0.08;
+
+      time += isSpeaking ? 0.05 : micActive ? 0.035 : 0.009;
+      angleY += isSpeaking ? 0.0022 : micActive ? 0.0016 : 0.00045;
+
+      const centerX = width * 0.5;
+      const centerY = height * 0.6; // horizon low in screen space
+
+      const active = isSpeaking || micActive;
+      const primaryColor = isSpeaking 
+        ? 'rgba(59, 130, 246, 0.45)' 
+        : micActive 
+          ? 'rgba(239, 68, 68, 0.45)' 
+          : 'rgba(55, 65, 81, 0.16)';
+      
+      const secondaryColor = isSpeaking 
+        ? 'rgba(139, 92, 246, 0.25)' 
+        : micActive 
+          ? 'rgba(249, 115, 22, 0.25)' 
+          : 'rgba(55, 65, 81, 0.08)';
+
+      const cosX = Math.cos(angleX);
+      const sinX = Math.sin(angleX);
+      const cosY = Math.cos(angleY);
+      const sinY = Math.sin(angleY);
+
+      // Projected array maps
+      const grid = Array.from({ length: rows }, () => Array(cols).fill(null));
+
+      // 1. Transform coordinates & do perspective projection
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const x3d = (c - cols / 2) * spacing;
+          const y3d = (r - rows / 2) * spacing;
+
+          const dist = Math.sqrt(x3d * x3d + y3d * y3d);
+          let z3d = 0;
+
+          if (active) {
+            // Cascade ring ripples from the visual core center
+            z3d = Math.sin(dist * 0.013 - time * 2.2) * currentAmplitude * 1.6;
+            z3d += Math.cos((x3d - y3d) * 0.006 - time) * currentAmplitude * 0.5;
+          } else {
+            // Calm slow breathing
+            z3d = Math.sin(dist * 0.007 - time) * currentAmplitude;
+          }
+
+          z3d *= currentScaleZ;
+
+          // Yaw rotation (Y-axis)
+          const rotY_x = x3d * cosY - z3d * sinY;
+          const rotY_z = x3d * sinY + z3d * cosY;
+          const rotY_y = y3d;
+
+          // Pitch rotation (X-axis)
+          const rotX_x = rotY_x;
+          const rotX_y = rotY_y * cosX - rotY_z * sinX;
+          const rotX_z = rotY_y * sinX + rotY_z * cosX;
+
+          // Camera focal perspective transform
+          const camZ = rotX_z + 1300;
+          const scale = 900 / camZ;
+          const projX = centerX + rotX_x * scale;
+          const projY = centerY + rotX_y * scale;
+
+          // Depth fog fading calculation
+          grid[r][c] = {
+            x: projX,
+            y: projY,
+            depth: camZ,
+            alpha: Math.min(1.0, Math.max(0.0, (1500 - camZ) / 900))
+          };
+        }
+      }
+
+      // 2. Connect wireframe lines
+      ctx.lineWidth = 1.0;
+
+      // Connecting horizontal rows
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols - 1; c++) {
+          const pt1 = grid[r][c];
+          const pt2 = grid[r][c + 1];
+          if (pt1 && pt2) {
+            const avgAlpha = (pt1.alpha + pt2.alpha) * 0.5;
+            if (avgAlpha > 0.04) {
+              ctx.beginPath();
+              ctx.moveTo(pt1.x, pt1.y);
+              ctx.lineTo(pt2.x, pt2.y);
+              
+              const grad = ctx.createLinearGradient(pt1.x, pt1.y, pt2.x, pt2.y);
+              grad.addColorStop(0, getGridColor(r, c, avgAlpha, primaryColor, secondaryColor));
+              grad.addColorStop(1, getGridColor(r, c + 1, avgAlpha, primaryColor, secondaryColor));
+              
+              ctx.strokeStyle = grad;
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      // Connecting vertical columns
+      for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < rows - 1; r++) {
+          const pt1 = grid[r][c];
+          const pt2 = grid[r + 1][c];
+          if (pt1 && pt2) {
+            const avgAlpha = (pt1.alpha + pt2.alpha) * 0.5;
+            if (avgAlpha > 0.04) {
+              ctx.beginPath();
+              ctx.moveTo(pt1.x, pt1.y);
+              ctx.lineTo(pt2.x, pt2.y);
+              
+              const grad = ctx.createLinearGradient(pt1.x, pt1.y, pt2.x, pt2.y);
+              grad.addColorStop(0, getGridColor(r, c, avgAlpha, primaryColor, secondaryColor));
+              grad.addColorStop(1, getGridColor(r + 1, c, avgAlpha, primaryColor, secondaryColor));
+              
+              ctx.strokeStyle = grad;
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      // 3. Energetic cyber spark spikes
+      if (active) {
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = isSpeaking ? '#3b82f6' : '#ef4444';
+        for (let i = 0; i < 6; i++) {
+          const r = Math.floor(Math.random() * rows);
+          const c = Math.floor(Math.random() * cols);
+          const pt = grid[r][c];
+          if (pt && pt.alpha > 0.25) {
+            ctx.beginPath();
+            ctx.fillStyle = isSpeaking ? 'rgba(191, 219, 254, 0.95)' : 'rgba(254, 202, 202, 0.95)';
+            ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.shadowBlur = 0;
+      }
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    // Edge fading and center gradient maps
+    const getGridColor = (r, c, alpha, pCol, sCol) => {
+      const distRatio = Math.sqrt(Math.pow(r - rows/2, 2) + Math.pow(c - cols/2, 2)) / (rows/2);
+      const centerFactor = Math.max(0, 1 - distRatio);
+      const baseAlpha = alpha * centerFactor * 0.9;
+
+      if (isSpeaking) {
+        return distRatio < 0.45 
+          ? `rgba(96, 165, 250, ${baseAlpha * 0.95})` 
+          : `rgba(99, 102, 241, ${baseAlpha * 0.5})`;
+      }
+      if (micActive) {
+        return distRatio < 0.45 
+          ? `rgba(248, 113, 113, ${baseAlpha * 0.95})` 
+          : `rgba(251, 146, 60, ${baseAlpha * 0.5})`;
+      }
+      return `rgba(55, 65, 81, ${baseAlpha * 0.22})`;
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isSpeaking, micActive]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 w-full h-full pointer-events-none z-0"
+      style={{ mixBlendMode: 'screen', opacity: 0.95 }}
+    />
+  );
+}
+
 // ─── JARVIS orb with sonar rings ──────────────────────────────────────────────
 function JARVISOrb({ isSpeaking, micActive }) {
   return (
@@ -437,13 +671,16 @@ export default function InterviewScreen({
 
   // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden bg-navy-950 relative">
+    <div className="h-full w-full flex flex-col overflow-hidden bg-[#040814] relative">
+
+      {/* Full Screen 3D cyber visualizer landscape grid */}
+      <VoiceWavesCanvas3D isSpeaking={isSpeaking} micActive={micActive} />
 
       {phaseBanner && <PhaseBanner text={phaseBanner} onDone={onBannerDone} />}
 
       {/* ══ TOPBAR ═══════════════════════════════════════════════════════════ */}
-      <header className="h-14 shrink-0 border-b border-navy-800 flex items-center px-4 gap-3 z-10"
-        style={{ background: 'rgba(13,17,23,0.9)', backdropFilter: 'blur(14px)' }}>
+      <header className="h-14 shrink-0 border-b border-navy-800/40 flex items-center px-4 gap-3 z-10"
+        style={{ background: 'rgba(10, 15, 28, 0.72)', backdropFilter: 'blur(14px)' }}>
 
         {/* Logo */}
         <div className="flex items-center gap-2 shrink-0">
@@ -540,8 +777,8 @@ export default function InterviewScreen({
           </div>
         )}
 
-        {/* RIGHT: Conversation */}
-        <div className={`flex flex-col bg-navy-950 ${showCanvas ? 'w-[420px] shrink-0' : 'flex-1'} h-full`}>
+        {/* RIGHT: Conversation (Transparent blur glassmorphism to show 3D background grid) */}
+        <div className={`flex flex-col bg-[#070b15]/65 backdrop-blur-md border-l border-navy-800/60 ${showCanvas ? 'w-[420px] shrink-0' : 'flex-1'} h-full z-10`}>
 
           {/* Phase badge */}
           <div className="shrink-0 px-4 py-2 border-b border-navy-800 flex items-center gap-2"
