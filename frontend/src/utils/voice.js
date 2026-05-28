@@ -1,70 +1,61 @@
-// ─── Speech Synthesis (JARVIS speaks) ────────────────────────────────────────
+// ─── Speech Synthesis ──────────────────────────────────────────────────────────
 
 const cleanForSpeech = (text = '') =>
   text
-    .replace(/```[\s\S]*?```/g, 'code block omitted')
+    .replace(/```[\s\S]*?```/g, 'code block.')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/\*(.+?)\*/g, '$1')
     .replace(/#{1,6}\s/g, '')
     .replace(/>\s/gm, '')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/proceed_to_next_step[^,}]*/gi, '')
-    .replace(/summary[^,}]*/gi, '')
+    .replace(/proceed_to_next_step[^\n]*/gi, '')
     .replace(/[{}"]/g, ' ')
     .replace(/\n{2,}/g, '. ')
     .replace(/\n/g, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
 
-let voicesLoaded = false;
-let cachedVoices = [];
+let _voicesReady = false;
+let _voices = [];
 
-function getVoices() {
-  if (voicesLoaded) return cachedVoices;
-  cachedVoices = window.speechSynthesis.getVoices();
-  if (cachedVoices.length > 0) voicesLoaded = true;
-  return cachedVoices;
+function loadVoices() {
+  if (_voicesReady) return _voices;
+  _voices = window.speechSynthesis.getVoices();
+  if (_voices.length) _voicesReady = true;
+  return _voices;
 }
 
 function pickVoice() {
-  const voices = getVoices();
+  const v = loadVoices();
   return (
-    voices.find(v => v.name === 'Google UK English Male') ||
-    voices.find(v => v.name.toLowerCase().includes('uk') && v.name.toLowerCase().includes('male')) ||
-    voices.find(v => v.lang === 'en-GB') ||
-    voices.find(v => v.lang.startsWith('en-US') && v.name.toLowerCase().includes('male')) ||
-    voices.find(v => v.lang.startsWith('en')) ||
-    voices[0] ||
-    null
+    v.find(x => x.name === 'Google UK English Male') ||
+    v.find(x => x.name.toLowerCase().includes('uk') && x.name.toLowerCase().includes('male')) ||
+    v.find(x => x.lang === 'en-GB') ||
+    v.find(x => x.lang.startsWith('en-US') && x.name.toLowerCase().includes('male')) ||
+    v.find(x => x.lang.startsWith('en')) ||
+    v[0] || null
   );
 }
 
 export function speakText(text, { isMuted = false, onStart, onEnd, onError } = {}) {
   if (typeof window === 'undefined' || !window.speechSynthesis) {
-    onStart?.();
-    setTimeout(() => onEnd?.(), 500);
-    return;
+    onStart?.(); setTimeout(() => onEnd?.(), 500); return;
   }
 
   window.speechSynthesis.cancel();
-
   const clean = cleanForSpeech(text);
   if (!clean) { onEnd?.(); return; }
 
   if (isMuted) {
-    // simulate timing but don't speak
     onStart?.();
-    const ms = Math.min(5000, Math.max(800, clean.split(' ').length * 220));
-    setTimeout(() => onEnd?.(), ms);
+    setTimeout(() => onEnd?.(), Math.min(5000, Math.max(800, clean.split(' ').length * 220)));
     return;
   }
 
   const go = () => {
     const utt = new SpeechSynthesisUtterance(clean);
-    utt.rate  = 0.9;
-    utt.pitch = 0.85;
-    utt.volume = 1;
+    utt.rate = 0.9; utt.pitch = 0.85; utt.volume = 1;
     const voice = pickVoice();
     if (voice) utt.voice = voice;
     utt.onstart = () => onStart?.();
@@ -73,22 +64,16 @@ export function speakText(text, { isMuted = false, onStart, onEnd, onError } = {
     window.speechSynthesis.speak(utt);
   };
 
-  // Voices may not be ready yet on first load
-  if (getVoices().length > 0) {
+  if (loadVoices().length > 0) {
     go();
   } else {
-    const handler = () => {
-      voicesLoaded = true;
-      cachedVoices = window.speechSynthesis.getVoices();
-      window.speechSynthesis.removeEventListener('voiceschanged', handler);
+    const h = () => {
+      _voicesReady = true; _voices = window.speechSynthesis.getVoices();
+      window.speechSynthesis.removeEventListener('voiceschanged', h);
       go();
     };
-    window.speechSynthesis.addEventListener('voiceschanged', handler);
-    // Fallback after 800ms
-    setTimeout(() => {
-      cachedVoices = window.speechSynthesis.getVoices();
-      if (cachedVoices.length > 0) go();
-    }, 800);
+    window.speechSynthesis.addEventListener('voiceschanged', h);
+    setTimeout(() => { if (loadVoices().length > 0) go(); }, 800);
   }
 }
 
@@ -97,40 +82,80 @@ export function stopSpeaking() {
     window.speechSynthesis.cancel();
 }
 
-// ─── Speech Recognition (Candidate speaks) ───────────────────────────────────
+// ─── Speech Recognition ────────────────────────────────────────────────────────
+//
+// KEY FIX: continuous = true prevents Chrome from auto-stopping after ~1s of
+// silence (which caused the "mic collapses in 1 second" bug).
+// We restart on unexpected ends so background noise never kills the session.
+// Only when the user explicitly calls .stop() do we deliver the transcript.
 
-export function createRecognition({ onInterim, onFinal, onEnd, onError }) {
+export function createRecognition({ onInterim, onEnd, onError }) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return null;
 
   const rec = new SR();
-  rec.continuous = false;
-  rec.interimResults = true;
-  rec.lang = 'en-US';
+  rec.continuous      = true;   // ← THE FIX: keep mic open between words
+  rec.interimResults  = true;
+  rec.lang            = 'en-US';
+  rec.maxAlternatives = 1;
 
-  let finalText = '';
+  let finalText      = '';
+  let interimText    = '';
+  let stoppedByUser  = false;   // true only when user clicks Stop
+  let started        = false;
 
   rec.onresult = e => {
-    let interim = '';
-    finalText = '';
-    for (let i = 0; i < e.results.length; i++) {
-      if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
-      else interim += e.results[i][0].transcript;
+    interimText = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) {
+        finalText += t + ' ';
+      } else {
+        interimText += t;
+      }
     }
-    onInterim?.(interim || finalText);
+    // Show accumulated final + current interim to the user
+    onInterim?.((finalText + interimText).trim());
   };
 
   rec.onerror = e => {
-    if (e.error !== 'no-speech') onError?.(e.error);
+    // 'no-speech' fires when there's silence — with continuous=true we just
+    // keep going, no need to restart or surface this to the user.
+    if (e.error === 'no-speech') return;
+    // 'aborted' fires when we call abort() intentionally — ignore.
+    if (e.error === 'aborted')   return;
+    console.error('SpeechRecognition error:', e.error);
+    onError?.(e.error);
   };
 
   rec.onend = () => {
-    onEnd?.(finalText.trim());
+    if (stoppedByUser) {
+      // Deliver the final accumulated transcript
+      onEnd?.((finalText + interimText).trim());
+    } else if (started) {
+      // Browser ended us unexpectedly (network hiccup, tab focus loss, etc.)
+      // Restart transparently so the mic stays open.
+      try { rec.start(); } catch (_) { /* already started */ }
+    }
   };
 
   return {
-    start()  { try { rec.start(); } catch(_) {} },
-    stop()   { try { rec.stop();  } catch(_) {} },
-    abort()  { try { rec.abort(); } catch(_) {} },
+    start() {
+      finalText     = '';
+      interimText   = '';
+      stoppedByUser = false;
+      started       = true;
+      try { rec.start(); } catch (_) {}
+    },
+    stop() {
+      stoppedByUser = true;
+      started       = false;
+      try { rec.stop(); } catch (_) {}
+    },
+    abort() {
+      stoppedByUser = true;
+      started       = false;
+      try { rec.abort(); } catch (_) {}
+    },
   };
 }
