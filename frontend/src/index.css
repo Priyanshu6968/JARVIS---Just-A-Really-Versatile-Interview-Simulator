@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── base ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #060d1a;
+  color: #c9d1d9;
+  overflow: hidden;
+}
+
+/* ── scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #21262d; border-radius: 9px; }
+::-webkit-scrollbar-thumb:hover { background: #30363d; }
+
+/* ── glass ────────────────────────────────────────────────────────────────── */
+.glass {
+  background: rgba(13, 17, 23, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.glass-blue {
+  background: rgba(59,130,246,0.06);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(59,130,246,0.18);
+}
+
+/* ── fade in ──────────────────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.35s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* ── orb ──────────────────────────────────────────────────────────────────── */
+@keyframes orbIdle {
+  0%,100% { box-shadow: 0 0 12px 2px rgba(59,130,246,0.25); transform: scale(1); }
+  50%      { box-shadow: 0 0 22px 5px rgba(59,130,246,0.4);  transform: scale(1.04); }
+}
+@keyframes orbSpeak {
+  0%,100% { box-shadow: 0 0 18px 6px rgba(59,130,246,0.6);  transform: scale(1); }
+  25%     { box-shadow: 0 0 32px 12px rgba(99,102,241,0.7); transform: scale(1.1); }
+  50%     { box-shadow: 0 0 28px 10px rgba(59,130,246,0.75);transform: scale(1.06); }
+  75%     { box-shadow: 0 0 22px 8px rgba(139,92,246,0.65); transform: scale(1.08); }
+}
+.orb-idle  { animation: orbIdle  3s ease-in-out infinite; }
+.orb-speak { animation: orbSpeak 1.2s ease-in-out infinite; }
+
+/* ── typing dots ──────────────────────────────────────────────────────────── */
+@keyframes dot { 0%,80%,100% { transform:scale(0.5); opacity:0.3; } 40% { transform:scale(1); opacity:1; } }
+.dot1 { animation: dot 1.3s ease-in-out infinite 0s; }
+.dot2 { animation: dot 1.3s ease-in-out infinite 0.2s; }
+.dot3 { animation: dot 1.3s ease-in-out infinite 0.4s; }
+
+/* ── wave bars ────────────────────────────────────────────────────────────── */
+@keyframes wave { 0%,100% { transform:scaleY(0.25); } 50% { transform:scaleY(1); } }
+.wave-bar { width:3px; border-radius:9px; transform-origin:bottom; }
+.wave-bar:nth-child(1) { animation: wave 1s ease-in-out infinite 0.0s; height:18px; }
+.wave-bar:nth-child(2) { animation: wave 1s ease-in-out infinite 0.15s; height:24px; }
+.wave-bar:nth-child(3) { animation: wave 1s ease-in-out infinite 0.3s; height:20px; }
+.wave-bar:nth-child(4) { animation: wave 1s ease-in-out infinite 0.15s; height:24px; }
+.wave-bar:nth-child(5) { animation: wave 1s ease-in-out infinite 0.0s; height:16px; }
+
+/* ── phase banner ─────────────────────────────────────────────────────────── */
+@keyframes bannerSlide { from { opacity:0; transform:translateY(-100%); } to { opacity:1; transform:translateY(0); } }
+.phase-banner { animation: bannerSlide 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* ── grid bg ──────────────────────────────────────────────────────────────── */
+.grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(59,130,246,0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(59,130,246,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
