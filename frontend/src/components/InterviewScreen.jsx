@@ -225,8 +225,8 @@ function VoiceWavesCanvas({ isSpeaking, micActive }) {
   );
 }
 
-// ─── Holographic 3D Cyber-Terrain Grid Visualizer ────────────────────────────
-function VoiceWavesCanvas3D({ isSpeaking, micActive }) {
+// ─── Majestic Fullscreen Ambient Sine Waves ──────────────────────────────────
+function AmbientSineWaves({ isSpeaking, micActive }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -238,9 +238,8 @@ function VoiceWavesCanvas3D({ isSpeaking, micActive }) {
     let height = 0;
 
     const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      width = rect.width;
-      height = rect.height;
+      width = window.innerWidth;
+      height = window.innerHeight;
       canvas.width = width * window.devicePixelRatio;
       canvas.height = height * window.devicePixelRatio;
       ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
@@ -248,198 +247,137 @@ function VoiceWavesCanvas3D({ isSpeaking, micActive }) {
     resize();
     window.addEventListener('resize', resize);
 
-    // Grid details: larger density for beautiful horizon details
-    const rows = 26;
-    const cols = 26;
-    const spacing = 52; // 3D spacing factor
-
-    let angleX = 0.95; // Downward tilt perspective angle
-    let angleY = 0.4;  // Yaw rotation angles
-    let time = 0;
-
+    // Highly staggered starting phases
+    let phases = [0, 1.2, 2.4, 3.6, 4.8];
+    
     let targetAmplitude = 0;
     let currentAmplitude = 0;
-    let targetScaleZ = 0;
-    let currentScaleZ = 0;
+    let particles = [];
+    const maxParticles = 30;
 
     const animate = () => {
       ctx.clearRect(0, 0, width, height);
 
-      // Amplitude heights based on JARVIS voice activation
+      // Amplitude sizes (how high the waves swell to cover vertical space)
       if (isSpeaking) {
-        targetAmplitude = 32;
-        targetScaleZ = 1.35;
+        targetAmplitude = 95; // massive vertical coverage
       } else if (micActive) {
-        targetAmplitude = 24;
-        targetScaleZ = 1.0;
+        targetAmplitude = 70;
       } else {
-        targetAmplitude = 5; // gentle standby breath
-        targetScaleZ = 0.35;
+        targetAmplitude = 22; // beautiful resting breathing wave flow
       }
 
-      currentAmplitude += (targetAmplitude - currentAmplitude) * 0.08;
-      currentScaleZ += (targetScaleZ - currentScaleZ) * 0.08;
+      // Smooth interpolation for majestic transitions
+      currentAmplitude += (targetAmplitude - currentAmplitude) * 0.05;
 
-      time += isSpeaking ? 0.05 : micActive ? 0.035 : 0.009;
-      angleY += isSpeaking ? 0.0022 : micActive ? 0.0016 : 0.00045;
+      // MUCH slower majestic flow speeds (was 0.08, now 0.004–0.012 for slow drift)
+      const baseSpeed = isSpeaking ? 0.012 : micActive ? 0.009 : 0.0035;
 
-      const centerX = width * 0.5;
-      const centerY = height * 0.6; // horizon low in screen space
+      // 5 overlapping slow waves with staggered center-line offsets to cover massive screen space
+      const waveConfigs = [
+        {
+          color: isSpeaking ? 'rgba(96, 165, 250, 0.45)' : micActive ? 'rgba(248, 113, 113, 0.45)' : 'rgba(14, 165, 233, 0.22)',
+          freq: 0.0032, // very wide frequency for long graceful fluid waves
+          speed: baseSpeed * 1.0,
+          lineWidth: 2.5,
+          glow: isSpeaking ? '#3b82f6' : micActive ? '#ef4444' : '#0ea5e9',
+          centerYOffset: -30 // slightly above center
+        },
+        {
+          color: isSpeaking ? 'rgba(129, 140, 248, 0.35)' : micActive ? 'rgba(251, 146, 60, 0.35)' : 'rgba(56, 189, 248, 0.16)',
+          freq: 0.005,
+          speed: baseSpeed * 0.8,
+          lineWidth: 2.0,
+          glow: null,
+          centerYOffset: 20 // slightly below center
+        },
+        {
+          color: isSpeaking ? 'rgba(167, 139, 250, 0.25)' : micActive ? 'rgba(244, 63, 94, 0.25)' : 'rgba(96, 165, 250, 0.12)',
+          freq: 0.002,
+          speed: baseSpeed * 0.55,
+          lineWidth: 1.5,
+          glow: null,
+          centerYOffset: -70 // higher up
+        },
+        {
+          color: isSpeaking ? 'rgba(34, 211, 238, 0.2)' : micActive ? 'rgba(236, 72, 153, 0.2)' : 'rgba(129, 140, 248, 0.1)',
+          freq: 0.007,
+          speed: baseSpeed * 1.1,
+          lineWidth: 1.2,
+          glow: null,
+          centerYOffset: 50 // lower down
+        },
+        {
+          color: isSpeaking ? 'rgba(99, 102, 241, 0.15)' : micActive ? 'rgba(253, 186, 116, 0.15)' : 'rgba(55, 65, 81, 0.08)',
+          freq: 0.0012,
+          speed: baseSpeed * 0.4,
+          lineWidth: 1.0,
+          glow: null,
+          centerYOffset: 0
+        }
+      ];
 
+      waveConfigs.forEach((w, idx) => {
+        phases[idx] += w.speed;
+        
+        ctx.beginPath();
+        ctx.lineWidth = w.lineWidth;
+        ctx.strokeStyle = w.color;
+
+        if (w.glow) {
+          ctx.shadowBlur = isSpeaking ? 16 : micActive ? 12 : 6;
+          ctx.shadowColor = w.glow;
+        } else {
+          ctx.shadowBlur = 0;
+        }
+
+        const centerY = height * 0.5 + w.centerYOffset;
+
+        for (let x = 0; x < width; x++) {
+          // Smooth sine envelope so waves fade beautifully at the left and right window borders
+          const env = Math.sin((x / width) * Math.PI);
+          const angle = x * w.freq + phases[idx];
+          
+          // Organic breathing macro micro ripples when active
+          const noise = isSpeaking ? (Math.sin(x * 0.008 + phases[0] * 1.5) * 4) : 0;
+          const y = centerY + (Math.sin(angle) * currentAmplitude + noise) * env;
+
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      });
+
+      // Drifting slow-rising particles when active
       const active = isSpeaking || micActive;
-      const primaryColor = isSpeaking 
-        ? 'rgba(59, 130, 246, 0.45)' 
-        : micActive 
-          ? 'rgba(239, 68, 68, 0.45)' 
-          : 'rgba(55, 65, 81, 0.16)';
-      
-      const secondaryColor = isSpeaking 
-        ? 'rgba(139, 92, 246, 0.25)' 
-        : micActive 
-          ? 'rgba(249, 115, 22, 0.25)' 
-          : 'rgba(55, 65, 81, 0.08)';
-
-      const cosX = Math.cos(angleX);
-      const sinX = Math.sin(angleX);
-      const cosY = Math.cos(angleY);
-      const sinY = Math.sin(angleY);
-
-      // Projected array maps
-      const grid = Array.from({ length: rows }, () => Array(cols).fill(null));
-
-      // 1. Transform coordinates & do perspective projection
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const x3d = (c - cols / 2) * spacing;
-          const y3d = (r - rows / 2) * spacing;
-
-          const dist = Math.sqrt(x3d * x3d + y3d * y3d);
-          let z3d = 0;
-
-          if (active) {
-            // Cascade ring ripples from the visual core center
-            z3d = Math.sin(dist * 0.013 - time * 2.2) * currentAmplitude * 1.6;
-            z3d += Math.cos((x3d - y3d) * 0.006 - time) * currentAmplitude * 0.5;
-          } else {
-            // Calm slow breathing
-            z3d = Math.sin(dist * 0.007 - time) * currentAmplitude;
-          }
-
-          z3d *= currentScaleZ;
-
-          // Yaw rotation (Y-axis)
-          const rotY_x = x3d * cosY - z3d * sinY;
-          const rotY_z = x3d * sinY + z3d * cosY;
-          const rotY_y = y3d;
-
-          // Pitch rotation (X-axis)
-          const rotX_x = rotY_x;
-          const rotX_y = rotY_y * cosX - rotY_z * sinX;
-          const rotX_z = rotY_y * sinX + rotY_z * cosX;
-
-          // Camera focal perspective transform
-          const camZ = rotX_z + 1300;
-          const scale = 900 / camZ;
-          const projX = centerX + rotX_x * scale;
-          const projY = centerY + rotX_y * scale;
-
-          // Depth fog fading calculation
-          grid[r][c] = {
-            x: projX,
-            y: projY,
-            depth: camZ,
-            alpha: Math.min(1.0, Math.max(0.0, (1500 - camZ) / 900))
-          };
-        }
+      if (active && Math.random() < 0.07 && particles.length < maxParticles) {
+        particles.push({
+          x: Math.random() * width,
+          y: height * 0.5 + (Math.random() - 0.5) * currentAmplitude * 1.4,
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: -Math.random() * 0.5 - 0.2, // very slow drift up
+          size: Math.random() * 3 + 1,
+          alpha: 1,
+          color: isSpeaking ? '96, 165, 250' : '248, 113, 113'
+        });
       }
 
-      // 2. Connect wireframe lines
-      ctx.lineWidth = 1.0;
-
-      // Connecting horizontal rows
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols - 1; c++) {
-          const pt1 = grid[r][c];
-          const pt2 = grid[r][c + 1];
-          if (pt1 && pt2) {
-            const avgAlpha = (pt1.alpha + pt2.alpha) * 0.5;
-            if (avgAlpha > 0.04) {
-              ctx.beginPath();
-              ctx.moveTo(pt1.x, pt1.y);
-              ctx.lineTo(pt2.x, pt2.y);
-              
-              const grad = ctx.createLinearGradient(pt1.x, pt1.y, pt2.x, pt2.y);
-              grad.addColorStop(0, getGridColor(r, c, avgAlpha, primaryColor, secondaryColor));
-              grad.addColorStop(1, getGridColor(r, c + 1, avgAlpha, primaryColor, secondaryColor));
-              
-              ctx.strokeStyle = grad;
-              ctx.stroke();
-            }
-          }
+      ctx.shadowBlur = 0;
+      particles.forEach((p, i) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= 0.007; // slower fade out
+        if (p.alpha <= 0 || p.x < 0 || p.x > width) {
+          particles.splice(i, 1);
+          return;
         }
-      }
-
-      // Connecting vertical columns
-      for (let c = 0; c < cols; c++) {
-        for (let r = 0; r < rows - 1; r++) {
-          const pt1 = grid[r][c];
-          const pt2 = grid[r + 1][c];
-          if (pt1 && pt2) {
-            const avgAlpha = (pt1.alpha + pt2.alpha) * 0.5;
-            if (avgAlpha > 0.04) {
-              ctx.beginPath();
-              ctx.moveTo(pt1.x, pt1.y);
-              ctx.lineTo(pt2.x, pt2.y);
-              
-              const grad = ctx.createLinearGradient(pt1.x, pt1.y, pt2.x, pt2.y);
-              grad.addColorStop(0, getGridColor(r, c, avgAlpha, primaryColor, secondaryColor));
-              grad.addColorStop(1, getGridColor(r + 1, c, avgAlpha, primaryColor, secondaryColor));
-              
-              ctx.strokeStyle = grad;
-              ctx.stroke();
-            }
-          }
-        }
-      }
-
-      // 3. Energetic cyber spark spikes
-      if (active) {
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = isSpeaking ? '#3b82f6' : '#ef4444';
-        for (let i = 0; i < 6; i++) {
-          const r = Math.floor(Math.random() * rows);
-          const c = Math.floor(Math.random() * cols);
-          const pt = grid[r][c];
-          if (pt && pt.alpha > 0.25) {
-            ctx.beginPath();
-            ctx.fillStyle = isSpeaking ? 'rgba(191, 219, 254, 0.95)' : 'rgba(254, 202, 202, 0.95)';
-            ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-        ctx.shadowBlur = 0;
-      }
+        ctx.fillStyle = `rgba(${p.color}, ${p.alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
 
       animationFrameId = requestAnimationFrame(animate);
-    };
-
-    // Edge fading and center gradient maps
-    const getGridColor = (r, c, alpha, pCol, sCol) => {
-      const distRatio = Math.sqrt(Math.pow(r - rows/2, 2) + Math.pow(c - cols/2, 2)) / (rows/2);
-      const centerFactor = Math.max(0, 1 - distRatio);
-      const baseAlpha = alpha * centerFactor * 0.9;
-
-      if (isSpeaking) {
-        return distRatio < 0.45 
-          ? `rgba(96, 165, 250, ${baseAlpha * 0.95})` 
-          : `rgba(99, 102, 241, ${baseAlpha * 0.5})`;
-      }
-      if (micActive) {
-        return distRatio < 0.45 
-          ? `rgba(248, 113, 113, ${baseAlpha * 0.95})` 
-          : `rgba(251, 146, 60, ${baseAlpha * 0.5})`;
-      }
-      return `rgba(55, 65, 81, ${baseAlpha * 0.22})`;
     };
 
     animate();
@@ -453,9 +391,262 @@ function VoiceWavesCanvas3D({ isSpeaking, micActive }) {
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full pointer-events-none z-0"
-      style={{ mixBlendMode: 'screen', opacity: 0.95 }}
+      className="fixed inset-0 w-full h-full pointer-events-none z-30"
+      style={{ opacity: 0.85 }}
     />
+  );
+}
+
+// ─── Glowing Cyber HUD Brackets (Matches User Reference Images) ─────────────
+function CyberHudBrackets({ isSpeaking }) {
+  const glowClass = isSpeaking 
+    ? 'drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] opacity-100' 
+    : 'drop-shadow-[0_0_4px_rgba(14,165,233,0.45)] opacity-60';
+
+  return (
+    <>
+      {/* TOP-LEFT BRACKET - Slides up/left and swells */}
+      <div 
+        className={`absolute top-4 left-4 w-32 h-20 transition-all duration-700 ease-out ${glowClass}`}
+        style={{
+          transform: isSpeaking ? 'translate(-10px, -8px) scale(1.03)' : 'translate(0px, 0px) scale(1)',
+        }}
+      >
+        <svg width="100%" height="100%" viewBox="0 0 128 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 0 H96 L90 6 H6 V64 L0 70 Z" fill="#22d3ee" />
+          <path d="M0 10 H3 V40 H0 Z" fill="#22d3ee" />
+          <rect x="12" y="12" width="6" height="6" fill="#0ea5e9" />
+        </svg>
+      </div>
+
+      {/* TOP-RIGHT BRACKET - Slides up/right and swells */}
+      <div 
+        className={`absolute top-4 right-4 w-32 h-20 transition-all duration-700 ease-out ${glowClass}`}
+        style={{
+          transform: isSpeaking ? 'translate(10px, -8px) scale(1.03)' : 'translate(0px, 0px) scale(1)',
+        }}
+      >
+        <svg width="100%" height="100%" viewBox="0 0 128 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M128 0 H32 L38 6 H122 V64 L128 70 Z" fill="#22d3ee" />
+          <path d="M125 10 H128 V40 H125 Z" fill="#22d3ee" />
+          <rect x="110" y="12" width="6" height="6" fill="#0ea5e9" />
+        </svg>
+      </div>
+
+      {/* BOTTOM-LEFT BRACKET - Slides down/left and swells */}
+      <div 
+        className={`absolute bottom-4 left-4 w-32 h-20 transition-all duration-700 ease-out ${glowClass}`}
+        style={{
+          transform: isSpeaking ? 'translate(-10px, 8px) scale(1.03)' : 'translate(0px, 0px) scale(1)',
+        }}
+      >
+        <svg width="100%" height="100%" viewBox="0 0 128 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 80 H96 L90 74 H6 V16 L0 10 Z" fill="#22d3ee" />
+          <path d="M0 40 H3 V70 H0 Z" fill="#22d3ee" />
+          <rect x="12" y="62" width="6" height="6" fill="#0ea5e9" />
+        </svg>
+      </div>
+
+      {/* BOTTOM-RIGHT BRACKET - Slides down/right and swells */}
+      <div 
+        className={`absolute bottom-4 right-4 w-32 h-20 transition-all duration-700 ease-out ${glowClass}`}
+        style={{
+          transform: isSpeaking ? 'translate(10px, 8px) scale(1.03)' : 'translate(0px, 0px) scale(1)',
+        }}
+      >
+        <svg width="100%" height="100%" viewBox="0 0 128 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M128 80 H32 L38 74 H122 V16 L128 10 Z" fill="#22d3ee" />
+          <path d="M125 40 H128 V70 H125 Z" fill="#22d3ee" />
+          <rect x="110" y="62" width="6" height="6" fill="#0ea5e9" />
+        </svg>
+      </div>
+
+      {/* LEFT HANDLE TAB - Slides outward */}
+      <div 
+        className={`absolute left-0 top-1/2 -translate-y-1/2 w-4 h-20 transition-all duration-700 ease-out ${glowClass}`}
+        style={{
+          transform: isSpeaking ? 'translateY(-50%) translate(-4px, 0px)' : 'translateY(-50%) translate(0px, 0px)',
+        }}
+      >
+        <svg width="100%" height="100%" viewBox="0 0 16 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 8 L12 16 V48 L0 56 Z" fill="#22d3ee" />
+          <path d="M0 0 H4 V4 H0 Z" fill="#22d3ee" />
+          <path d="M0 60 H4 V64 H0 Z" fill="#22d3ee" />
+        </svg>
+      </div>
+
+      {/* RIGHT HANDLE TAB - Slides outward */}
+      <div 
+        className={`absolute right-0 top-1/2 -translate-y-1/2 w-4 h-20 transition-all duration-700 ease-out ${glowClass}`}
+        style={{
+          transform: isSpeaking ? 'translateY(-50%) translate(4px, 0px)' : 'translateY(-50%) translate(0px, 0px)',
+        }}
+      >
+        <svg width="100%" height="100%" viewBox="0 0 16 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16 8 L4 16 V48 L16 56 Z" fill="#22d3ee" />
+          <path d="M12 0 H16 V4 H12 Z" fill="#22d3ee" />
+          <path d="M12 60 H16 V64 H12 Z" fill="#22d3ee" />
+        </svg>
+      </div>
+    </>
+  );
+}
+
+// ─── Central 3D Rotating Prism Hologram (Double-Pyramid Wireframe) ────────────
+function CentralPrismHologram({ isSpeaking }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+
+    const width = 360;
+    const height = 240;
+    canvas.width = width * window.devicePixelRatio;
+    canvas.height = height * window.devicePixelRatio;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+    // 3D rotation angles
+    let angleX = 0.5; // pitch
+    let angleY = 0.0; // yaw spin
+    let time = 0;
+
+    let targetAmplitude = 0;
+    let currentAmplitude = 0;
+
+    // A stacked double-pyramid (octahedron wireframe structure)
+    const layers = 11; // number of nested stacked wireframe loops
+
+    const animate = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      // Target horizontal expansion based on JARVIS voice activation
+      if (isSpeaking) {
+        targetAmplitude = 1.0;
+      } else {
+        targetAmplitude = 0.25; // small tightly bound dormant standby core
+      }
+
+      currentAmplitude += (targetAmplitude - currentAmplitude) * 0.08;
+
+      time += isSpeaking ? 0.04 : 0.008;
+      angleY += isSpeaking ? 0.016 : 0.003; // spin faster when speaking
+
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      const cosX = Math.cos(angleX);
+      const sinX = Math.sin(angleX);
+      const cosY = Math.cos(angleY);
+      const sinY = Math.sin(angleY);
+
+      // Connect stacked layers in 3D wireframe perspective
+      for (let l = 0; l < layers; l++) {
+        const ratio = l / (layers - 1); // 0 -> 1
+        const distFromCenter = Math.abs(ratio - 0.5) * 2; // 1 -> 0 -> 1
+        
+        // Base width of this diamond layer (octahedron width profile)
+        const radius = (1 - distFromCenter * 0.8) * 64 * (0.4 + currentAmplitude * 0.6);
+        const depthOffset = (ratio - 0.5) * 140 * (0.3 + currentAmplitude * 0.7);
+
+        // A 4-vertex diamond/rhombus representing a rotated wireframe loop
+        const vertices = [];
+        for (let i = 0; i < 4; i++) {
+          const angle = (i * Math.PI) / 2;
+          const x3d = Math.cos(angle) * radius;
+          const y3d = Math.sin(angle) * radius * 0.5; // squash vertically for flat diamond look
+          const z3d = depthOffset;
+
+          // Rotate around Y-axis (Yaw)
+          const rotY_x = x3d * cosY - z3d * sinY;
+          const rotY_z = x3d * sinY + z3d * cosY;
+          const rotY_y = y3d;
+
+          // Rotate around X-axis (Pitch)
+          const rotX_x = rotY_x;
+          const rotX_y = rotY_y * cosX - rotY_z * sinX;
+          const rotX_z = rotY_y * sinX + rotY_z * cosX;
+
+          // Perspective projection divide
+          const camZ = rotX_z + 320;
+          const scale = 240 / camZ;
+          const projX = centerX + rotX_x * scale;
+          const projY = centerY + rotX_y * scale;
+
+          vertices.push({ x: projX, y: projY, depth: camZ });
+        }
+
+        // Draw this wireframe loop
+        ctx.beginPath();
+        ctx.moveTo(vertices[0].x, vertices[0].y);
+        for (let i = 1; i < 4; i++) {
+          ctx.lineTo(vertices[i].x, vertices[i].y);
+        }
+        ctx.closePath();
+
+        // Calculate custom gradient or color based on depth
+        const depthRatio = (320 - vertices[0].depth + 100) / 200;
+        const opacity = isSpeaking 
+          ? 0.2 + (1 - distFromCenter) * 0.65 
+          : 0.12 + (1 - distFromCenter) * 0.28;
+
+        ctx.lineWidth = isSpeaking ? 1.5 : 1.0;
+        ctx.strokeStyle = `rgba(34, 211, 238, ${opacity})`;
+        ctx.stroke();
+
+        // Optional center grid axis line (matches dashed lines in photos)
+        if (l === Math.floor(layers / 2)) {
+          ctx.shadowBlur = isSpeaking ? 12 : 4;
+          ctx.shadowColor = '#22d3ee';
+          ctx.fillStyle = 'rgba(34, 211, 238, 0.9)';
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [isSpeaking]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="w-[360px] h-[240px] pointer-events-none drop-shadow-[0_0_12px_rgba(34,211,238,0.35)]"
+      style={{ mixBlendMode: 'screen' }}
+    />
+  );
+}
+
+// ─── Entire Viewport Cockpit HUD (Arises dynamically from center) ────────────
+function JarvisCockpitHud({ isSpeaking }) {
+  // Arises (scales out & blooms in opacity) majestically from center when speaking
+  const scaleVal = isSpeaking ? 'scale(1.0)' : 'scale(0.58)';
+  const opacityVal = isSpeaking ? 1.0 : 0.22;
+
+  return (
+    <div 
+      className="fixed inset-0 pointer-events-none z-20 flex items-center justify-center transition-all duration-[900ms] ease-[cubic-bezier(0.19,1,0.22,1)]"
+      style={{
+        transform: scaleVal,
+        opacity: opacityVal,
+        transformOrigin: 'center center',
+      }}
+    >
+      {/* Sleek corner brackets overlay framing viewport */}
+      <CyberHudBrackets isSpeaking={isSpeaking} />
+
+      {/* Dynamic 3D stacked diamond prism hologram spinning in the center */}
+      <CentralPrismHologram isSpeaking={isSpeaking} />
+      
+    </div>
   );
 }
 
@@ -673,8 +864,11 @@ export default function InterviewScreen({
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-[#040814] relative">
 
-      {/* Full Screen 3D cyber visualizer landscape grid */}
-      <VoiceWavesCanvas3D isSpeaking={isSpeaking} micActive={micActive} />
+      {/* Breathtaking Fullscreen Ambient Sine Waves Visualizer */}
+      <AmbientSineWaves isSpeaking={isSpeaking} micActive={micActive} />
+
+      {/* Jarvis Futuristic Cockpit HUD (Outer Brackets & Stacked Diamond Prism Hologram) */}
+      <JarvisCockpitHud isSpeaking={isSpeaking} />
 
       {phaseBanner && <PhaseBanner text={phaseBanner} onDone={onBannerDone} />}
 

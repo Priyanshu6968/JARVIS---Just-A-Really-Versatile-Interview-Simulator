@@ -42,34 +42,11 @@ html, body, #root {
 }
 .fade-up { animation: fadeUp 0.35s cubic-bezier(0.16,1,0.3,1) both; }
 
-/* ── orb ──────────────────────────────────────────────────────────────────── */
-@keyframes orbIdle {
-  0%,100% { box-shadow: 0 0 12px 2px rgba(59,130,246,0.25); transform: scale(1); }
-  50%      { box-shadow: 0 0 22px 5px rgba(59,130,246,0.4);  transform: scale(1.04); }
-}
-@keyframes orbSpeak {
-  0%,100% { box-shadow: 0 0 18px 6px rgba(59,130,246,0.6);  transform: scale(1); }
-  25%     { box-shadow: 0 0 32px 12px rgba(99,102,241,0.7); transform: scale(1.1); }
-  50%     { box-shadow: 0 0 28px 10px rgba(59,130,246,0.75);transform: scale(1.06); }
-  75%     { box-shadow: 0 0 22px 8px rgba(139,92,246,0.65); transform: scale(1.08); }
-}
-.orb-idle  { animation: orbIdle  3s ease-in-out infinite; }
-.orb-speak { animation: orbSpeak 1.2s ease-in-out infinite; }
-
 /* ── typing dots ──────────────────────────────────────────────────────────── */
 @keyframes dot { 0%,80%,100% { transform:scale(0.5); opacity:0.3; } 40% { transform:scale(1); opacity:1; } }
 .dot1 { animation: dot 1.3s ease-in-out infinite 0s; }
 .dot2 { animation: dot 1.3s ease-in-out infinite 0.2s; }
 .dot3 { animation: dot 1.3s ease-in-out infinite 0.4s; }
-
-/* ── wave bars ────────────────────────────────────────────────────────────── */
-@keyframes wave { 0%,100% { transform:scaleY(0.25); } 50% { transform:scaleY(1); } }
-.wave-bar { width:3px; border-radius:9px; transform-origin:bottom; }
-.wave-bar:nth-child(1) { animation: wave 1s ease-in-out infinite 0.0s; height:18px; }
-.wave-bar:nth-child(2) { animation: wave 1s ease-in-out infinite 0.15s; height:24px; }
-.wave-bar:nth-child(3) { animation: wave 1s ease-in-out infinite 0.3s; height:20px; }
-.wave-bar:nth-child(4) { animation: wave 1s ease-in-out infinite 0.15s; height:24px; }
-.wave-bar:nth-child(5) { animation: wave 1s ease-in-out infinite 0.0s; height:16px; }
 
 /* ── phase banner ─────────────────────────────────────────────────────────── */
 @keyframes bannerSlide { from { opacity:0; transform:translateY(-100%); } to { opacity:1; transform:translateY(0); } }
@@ -82,3 +59,58 @@ html, body, #root {
     linear-gradient(to bottom, rgba(59,130,246,0.03) 1px, transparent 1px);
   background-size: 40px 40px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   JARVIS DYNAMIC VISUALIZER ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Frequency bar pulse (each bar gets its own duration/delay inline) ──── */
+@keyframes freqPulse {
+  0%       { transform: scaleY(0.06); }
+  25%      { transform: scaleY(0.8);  }
+  50%      { transform: scaleY(1);    }
+  75%      { transform: scaleY(0.5);  }
+  100%     { transform: scaleY(0.06); }
+}
+
+/* ── Sonar ring expand from orb ────────────────────────────────────────── */
+@keyframes sonarExpand {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  60%  { transform: scale(2.2); opacity: 0.2; }
+  100% { transform: scale(2.8); opacity: 0;   }
+}
+
+/* ── Orb core glow breathing ───────────────────────────────────────────── */
+@keyframes orbBreath {
+  0%,100% { box-shadow: 0 0 14px 4px rgba(59,130,246,0.3), inset 0 0 14px rgba(96,165,250,0.1); }
+  50%     { box-shadow: 0 0 28px 10px rgba(59,130,246,0.55), inset 0 0 22px rgba(96,165,250,0.2); }
+}
+@keyframes orbSpeak {
+  0%   { box-shadow: 0 0 20px 7px rgba(59,130,246,0.6),  0 0 60px 20px rgba(99,102,241,0.15); transform: scale(1);    }
+  25%  { box-shadow: 0 0 36px 14px rgba(99,102,241,0.75), 0 0 80px 30px rgba(139,92,246,0.2);  transform: scale(1.09); }
+  50%  { box-shadow: 0 0 30px 11px rgba(59,130,246,0.8),  0 0 70px 25px rgba(59,130,246,0.2);  transform: scale(1.05); }
+  75%  { box-shadow: 0 0 42px 16px rgba(139,92,246,0.7),  0 0 90px 35px rgba(99,102,241,0.2);  transform: scale(1.11); }
+  100% { box-shadow: 0 0 20px 7px rgba(59,130,246,0.6),  0 0 60px 20px rgba(99,102,241,0.15); transform: scale(1);    }
+}
+.orb-idle  { animation: orbBreath 3.5s ease-in-out infinite; }
+.orb-speak { animation: orbSpeak  1.4s ease-in-out infinite; }
+
+/* ── HUD background shimmer when speaking ──────────────────────────────── */
+@keyframes hudGlow {
+  0%,100% { opacity: 0.07; }
+  50%     { opacity: 0.18; }
+}
+.hud-glow { animation: hudGlow 2s ease-in-out infinite; }
+
+/* ── Mic active ring ───────────────────────────────────────────────────── */
+@keyframes micPulse {
+  0%   { transform: scale(1);   opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0;   }
+}
+
+/* ── Idle flatline shimmer ─────────────────────────────────────────────── */
+@keyframes flatShimmer {
+  0%,100% { opacity: 0.18; }
+  50%     { opacity: 0.35; }
+}
+.flat-shimmer { animation: flatShimmer 3s ease-in-out infinite; }
