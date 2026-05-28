@@ -276,42 +276,42 @@ function AmbientSineWaves({ isSpeaking, micActive }) {
       // 5 overlapping slow waves with staggered center-line offsets to cover massive screen space
       const waveConfigs = [
         {
-          color: isSpeaking ? 'rgba(96, 165, 250, 0.45)' : micActive ? 'rgba(248, 113, 113, 0.45)' : 'rgba(14, 165, 233, 0.22)',
+          color: isSpeaking ? 'rgba(96, 165, 250, 0.65)' : micActive ? 'rgba(248, 113, 113, 0.65)' : 'rgba(34, 211, 238, 0.35)',
           freq: 0.0032, // very wide frequency for long graceful fluid waves
           speed: baseSpeed * 1.0,
-          lineWidth: 2.5,
-          glow: isSpeaking ? '#3b82f6' : micActive ? '#ef4444' : '#0ea5e9',
+          lineWidth: 2.8,
+          glow: isSpeaking ? '#3b82f6' : micActive ? '#ef4444' : '#22d3ee',
           centerYOffset: -30 // slightly above center
         },
         {
-          color: isSpeaking ? 'rgba(129, 140, 248, 0.35)' : micActive ? 'rgba(251, 146, 60, 0.35)' : 'rgba(56, 189, 248, 0.16)',
+          color: isSpeaking ? 'rgba(129, 140, 248, 0.55)' : micActive ? 'rgba(251, 146, 60, 0.55)' : 'rgba(34, 211, 238, 0.25)',
           freq: 0.005,
           speed: baseSpeed * 0.8,
-          lineWidth: 2.0,
+          lineWidth: 2.2,
           glow: null,
           centerYOffset: 20 // slightly below center
         },
         {
-          color: isSpeaking ? 'rgba(167, 139, 250, 0.25)' : micActive ? 'rgba(244, 63, 94, 0.25)' : 'rgba(96, 165, 250, 0.12)',
+          color: isSpeaking ? 'rgba(167, 139, 250, 0.45)' : micActive ? 'rgba(244, 63, 94, 0.45)' : 'rgba(96, 165, 250, 0.2)',
           freq: 0.002,
           speed: baseSpeed * 0.55,
-          lineWidth: 1.5,
+          lineWidth: 1.8,
           glow: null,
           centerYOffset: -70 // higher up
         },
         {
-          color: isSpeaking ? 'rgba(34, 211, 238, 0.2)' : micActive ? 'rgba(236, 72, 153, 0.2)' : 'rgba(129, 140, 248, 0.1)',
+          color: isSpeaking ? 'rgba(34, 211, 238, 0.35)' : micActive ? 'rgba(236, 72, 153, 0.35)' : 'rgba(129, 140, 248, 0.18)',
           freq: 0.007,
           speed: baseSpeed * 1.1,
-          lineWidth: 1.2,
+          lineWidth: 1.5,
           glow: null,
           centerYOffset: 50 // lower down
         },
         {
-          color: isSpeaking ? 'rgba(99, 102, 241, 0.15)' : micActive ? 'rgba(253, 186, 116, 0.15)' : 'rgba(55, 65, 81, 0.08)',
+          color: isSpeaking ? 'rgba(99, 102, 241, 0.25)' : micActive ? 'rgba(253, 186, 116, 0.25)' : 'rgba(55, 65, 81, 0.15)',
           freq: 0.0012,
           speed: baseSpeed * 0.4,
-          lineWidth: 1.0,
+          lineWidth: 1.2,
           glow: null,
           centerYOffset: 0
         }
@@ -331,7 +331,7 @@ function AmbientSineWaves({ isSpeaking, micActive }) {
           ctx.shadowBlur = 0;
         }
 
-        const centerY = height * 0.5 + w.centerYOffset;
+        const centerY = height * 0.35 + w.centerYOffset;
 
         for (let x = 0; x < width; x++) {
           // Smooth sine envelope so waves fade beautifully at the left and right window borders
@@ -353,7 +353,7 @@ function AmbientSineWaves({ isSpeaking, micActive }) {
       if (active && Math.random() < 0.07 && particles.length < maxParticles) {
         particles.push({
           x: Math.random() * width,
-          y: height * 0.5 + (Math.random() - 0.5) * currentAmplitude * 1.4,
+          y: height * 0.35 + (Math.random() - 0.5) * currentAmplitude * 1.4,
           vx: (Math.random() - 0.5) * 0.3,
           vy: -Math.random() * 0.5 - 0.2, // very slow drift up
           size: Math.random() * 3 + 1,
@@ -392,24 +392,26 @@ function AmbientSineWaves({ isSpeaking, micActive }) {
     <canvas
       ref={canvasRef}
       className="fixed inset-0 w-full h-full pointer-events-none z-30"
-      style={{ opacity: 0.85 }}
+      style={{ opacity: 0.95 }}
     />
   );
 }
 
-// ─── Glowing Cyber HUD Brackets (Matches User Reference Images) ─────────────
+// ─── Glowing Cyber HUD Brackets (Matches User Reference Images - Vibrant Neon Cyan)
 function CyberHudBrackets({ isSpeaking }) {
   const glowClass = isSpeaking 
-    ? 'drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] opacity-100' 
-    : 'drop-shadow-[0_0_4px_rgba(14,165,233,0.45)] opacity-60';
+    ? 'drop-shadow-[0_0_15px_rgba(34,211,238,0.95)] opacity-100' 
+    : 'drop-shadow-[0_0_6px_rgba(34,211,238,0.6)] opacity-75';
 
   return (
     <>
-      {/* TOP-LEFT BRACKET - Slides up/left and swells */}
+      {/* TOP-LEFT BRACKET - Emerges from very center of screen to top-left corner */}
       <div 
-        className={`absolute top-4 left-4 w-32 h-20 transition-all duration-700 ease-out ${glowClass}`}
+        className={`absolute top-4 left-4 w-32 h-20 transition-all duration-[1100ms] cubic-bezier(0.19,1,0.22,1) ${glowClass}`}
         style={{
-          transform: isSpeaking ? 'translate(-10px, -8px) scale(1.03)' : 'translate(0px, 0px) scale(1)',
+          transform: isSpeaking 
+            ? 'translate(0px, 0px) scale(1)' 
+            : 'translate(calc(50vw - 110px), calc(50vh - 65px)) scale(0.12)',
         }}
       >
         <svg width="100%" height="100%" viewBox="0 0 128 80" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -419,11 +421,13 @@ function CyberHudBrackets({ isSpeaking }) {
         </svg>
       </div>
 
-      {/* TOP-RIGHT BRACKET - Slides up/right and swells */}
+      {/* TOP-RIGHT BRACKET - Emerges from very center of screen to top-right corner */}
       <div 
-        className={`absolute top-4 right-4 w-32 h-20 transition-all duration-700 ease-out ${glowClass}`}
+        className={`absolute top-4 right-4 w-32 h-20 transition-all duration-[1100ms] cubic-bezier(0.19,1,0.22,1) ${glowClass}`}
         style={{
-          transform: isSpeaking ? 'translate(10px, -8px) scale(1.03)' : 'translate(0px, 0px) scale(1)',
+          transform: isSpeaking 
+            ? 'translate(0px, 0px) scale(1)' 
+            : 'translate(calc(-50vw + 110px), calc(50vh - 65px)) scale(0.12)',
         }}
       >
         <svg width="100%" height="100%" viewBox="0 0 128 80" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -433,11 +437,13 @@ function CyberHudBrackets({ isSpeaking }) {
         </svg>
       </div>
 
-      {/* BOTTOM-LEFT BRACKET - Slides down/left and swells */}
+      {/* BOTTOM-LEFT BRACKET - Emerges from very center of screen to bottom-left corner */}
       <div 
-        className={`absolute bottom-4 left-4 w-32 h-20 transition-all duration-700 ease-out ${glowClass}`}
+        className={`absolute bottom-4 left-4 w-32 h-20 transition-all duration-[1100ms] cubic-bezier(0.19,1,0.22,1) ${glowClass}`}
         style={{
-          transform: isSpeaking ? 'translate(-10px, 8px) scale(1.03)' : 'translate(0px, 0px) scale(1)',
+          transform: isSpeaking 
+            ? 'translate(0px, 0px) scale(1)' 
+            : 'translate(calc(50vw - 110px), calc(-50vh + 65px)) scale(0.12)',
         }}
       >
         <svg width="100%" height="100%" viewBox="0 0 128 80" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -447,11 +453,13 @@ function CyberHudBrackets({ isSpeaking }) {
         </svg>
       </div>
 
-      {/* BOTTOM-RIGHT BRACKET - Slides down/right and swells */}
+      {/* BOTTOM-RIGHT BRACKET - Emerges from very center of screen to bottom-right corner */}
       <div 
-        className={`absolute bottom-4 right-4 w-32 h-20 transition-all duration-700 ease-out ${glowClass}`}
+        className={`absolute bottom-4 right-4 w-32 h-20 transition-all duration-[1100ms] cubic-bezier(0.19,1,0.22,1) ${glowClass}`}
         style={{
-          transform: isSpeaking ? 'translate(10px, 8px) scale(1.03)' : 'translate(0px, 0px) scale(1)',
+          transform: isSpeaking 
+            ? 'translate(0px, 0px) scale(1)' 
+            : 'translate(calc(-50vw + 110px), calc(-50vh + 65px)) scale(0.12)',
         }}
       >
         <svg width="100%" height="100%" viewBox="0 0 128 80" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -461,11 +469,13 @@ function CyberHudBrackets({ isSpeaking }) {
         </svg>
       </div>
 
-      {/* LEFT HANDLE TAB - Slides outward */}
+      {/* LEFT HANDLE TAB - Emerges from very center of screen */}
       <div 
-        className={`absolute left-0 top-1/2 -translate-y-1/2 w-4 h-20 transition-all duration-700 ease-out ${glowClass}`}
+        className={`absolute left-0 top-1/2 -translate-y-1/2 w-4 h-20 transition-all duration-[1100ms] cubic-bezier(0.19,1,0.22,1) ${glowClass}`}
         style={{
-          transform: isSpeaking ? 'translateY(-50%) translate(-4px, 0px)' : 'translateY(-50%) translate(0px, 0px)',
+          transform: isSpeaking 
+            ? 'translateY(-50%) translate(0px, 0px) scale(1)' 
+            : 'translateY(-50%) translate(calc(50vw - 20px), 0px) scale(0.1)',
         }}
       >
         <svg width="100%" height="100%" viewBox="0 0 16 64" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -475,11 +485,13 @@ function CyberHudBrackets({ isSpeaking }) {
         </svg>
       </div>
 
-      {/* RIGHT HANDLE TAB - Slides outward */}
+      {/* RIGHT HANDLE TAB - Emerges from very center of screen */}
       <div 
-        className={`absolute right-0 top-1/2 -translate-y-1/2 w-4 h-20 transition-all duration-700 ease-out ${glowClass}`}
+        className={`absolute right-0 top-1/2 -translate-y-1/2 w-4 h-20 transition-all duration-[1100ms] cubic-bezier(0.19,1,0.22,1) ${glowClass}`}
         style={{
-          transform: isSpeaking ? 'translateY(-50%) translate(4px, 0px)' : 'translateY(-50%) translate(0px, 0px)',
+          transform: isSpeaking 
+            ? 'translateY(-50%) translate(0px, 0px) scale(1)' 
+            : 'translateY(-50%) translate(calc(-50vw + 20px), 0px) scale(0.1)',
         }}
       >
         <svg width="100%" height="100%" viewBox="0 0 16 64" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -492,7 +504,7 @@ function CyberHudBrackets({ isSpeaking }) {
   );
 }
 
-// ─── Central 3D Rotating Prism Hologram (Double-Pyramid Wireframe) ────────────
+// ─── Central 3D Rotating Prism Hologram (Double-Pyramid Wireframe - Radiant Neon Cyan) 
 function CentralPrismHologram({ isSpeaking }) {
   const canvasRef = useRef(null);
 
@@ -502,37 +514,34 @@ function CentralPrismHologram({ isSpeaking }) {
     const ctx = canvas.getContext('2d');
     let animationFrameId;
 
-    const width = 360;
-    const height = 240;
+    const width = 640;
+    const height = 420;
     canvas.width = width * window.devicePixelRatio;
     canvas.height = height * window.devicePixelRatio;
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
-    // 3D rotation angles
-    let angleX = 0.5; // pitch
-    let angleY = 0.0; // yaw spin
+    let angleX = 0.55; 
+    let angleY = 0.0;  
     let time = 0;
 
     let targetAmplitude = 0;
     let currentAmplitude = 0;
 
-    // A stacked double-pyramid (octahedron wireframe structure)
-    const layers = 11; // number of nested stacked wireframe loops
+    const layers = 11;
 
     const animate = () => {
       ctx.clearRect(0, 0, width, height);
 
-      // Target horizontal expansion based on JARVIS voice activation
       if (isSpeaking) {
         targetAmplitude = 1.0;
       } else {
-        targetAmplitude = 0.25; // small tightly bound dormant standby core
+        targetAmplitude = 0.22;
       }
 
       currentAmplitude += (targetAmplitude - currentAmplitude) * 0.08;
 
-      time += isSpeaking ? 0.04 : 0.008;
-      angleY += isSpeaking ? 0.016 : 0.003; // spin faster when speaking
+      time += isSpeaking ? 0.045 : 0.007;
+      angleY += isSpeaking ? 0.015 : 0.0022;
 
       const centerX = width / 2;
       const centerY = height / 2;
@@ -542,43 +551,36 @@ function CentralPrismHologram({ isSpeaking }) {
       const cosY = Math.cos(angleY);
       const sinY = Math.sin(angleY);
 
-      // Connect stacked layers in 3D wireframe perspective
       for (let l = 0; l < layers; l++) {
-        const ratio = l / (layers - 1); // 0 -> 1
-        const distFromCenter = Math.abs(ratio - 0.5) * 2; // 1 -> 0 -> 1
+        const ratio = l / (layers - 1);
+        const distFromCenter = Math.abs(ratio - 0.5) * 2; 
         
-        // Base width of this diamond layer (octahedron width profile)
-        const radius = (1 - distFromCenter * 0.8) * 64 * (0.4 + currentAmplitude * 0.6);
-        const depthOffset = (ratio - 0.5) * 140 * (0.3 + currentAmplitude * 0.7);
+        const radius = (1 - distFromCenter * 0.8) * 155 * (0.35 + currentAmplitude * 0.65);
+        const depthOffset = (ratio - 0.5) * 290 * (0.3 + currentAmplitude * 0.7);
 
-        // A 4-vertex diamond/rhombus representing a rotated wireframe loop
         const vertices = [];
         for (let i = 0; i < 4; i++) {
           const angle = (i * Math.PI) / 2;
           const x3d = Math.cos(angle) * radius;
-          const y3d = Math.sin(angle) * radius * 0.5; // squash vertically for flat diamond look
+          const y3d = Math.sin(angle) * radius * 0.48; 
           const z3d = depthOffset;
 
-          // Rotate around Y-axis (Yaw)
           const rotY_x = x3d * cosY - z3d * sinY;
           const rotY_z = x3d * sinY + z3d * cosY;
           const rotY_y = y3d;
 
-          // Rotate around X-axis (Pitch)
           const rotX_x = rotY_x;
           const rotX_y = rotY_y * cosX - rotY_z * sinX;
           const rotX_z = rotY_y * sinX + rotY_z * cosX;
 
-          // Perspective projection divide
-          const camZ = rotX_z + 320;
-          const scale = 240 / camZ;
+          const camZ = rotX_z + 460;
+          const scale = 360 / camZ;
           const projX = centerX + rotX_x * scale;
           const projY = centerY + rotX_y * scale;
 
           vertices.push({ x: projX, y: projY, depth: camZ });
         }
 
-        // Draw this wireframe loop
         ctx.beginPath();
         ctx.moveTo(vertices[0].x, vertices[0].y);
         for (let i = 1; i < 4; i++) {
@@ -586,23 +588,20 @@ function CentralPrismHologram({ isSpeaking }) {
         }
         ctx.closePath();
 
-        // Calculate custom gradient or color based on depth
-        const depthRatio = (320 - vertices[0].depth + 100) / 200;
         const opacity = isSpeaking 
-          ? 0.2 + (1 - distFromCenter) * 0.65 
-          : 0.12 + (1 - distFromCenter) * 0.28;
+          ? (0.25 + (1 - distFromCenter) * 0.72) 
+          : (0.15 + (1 - distFromCenter) * 0.35);
 
-        ctx.lineWidth = isSpeaking ? 1.5 : 1.0;
+        ctx.lineWidth = isSpeaking ? 1.6 : 1.0;
         ctx.strokeStyle = `rgba(34, 211, 238, ${opacity})`;
         ctx.stroke();
 
-        // Optional center grid axis line (matches dashed lines in photos)
         if (l === Math.floor(layers / 2)) {
           ctx.shadowBlur = isSpeaking ? 12 : 4;
           ctx.shadowColor = '#22d3ee';
-          ctx.fillStyle = 'rgba(34, 211, 238, 0.9)';
+          ctx.fillStyle = `rgba(34, 211, 238, ${isSpeaking ? 0.85 : 0.4})`;
           ctx.beginPath();
-          ctx.arc(centerX, centerY, 3.5, 0, Math.PI * 2);
+          ctx.arc(centerX, centerY, 4.5, 0, Math.PI * 2);
           ctx.fill();
           ctx.shadowBlur = 0;
         }
@@ -619,31 +618,25 @@ function CentralPrismHologram({ isSpeaking }) {
   return (
     <canvas
       ref={canvasRef}
-      className="w-[360px] h-[240px] pointer-events-none drop-shadow-[0_0_12px_rgba(34,211,238,0.35)]"
+      className="w-[640px] h-[420px] pointer-events-none drop-shadow-[0_0_20px_rgba(34,211,238,0.85)]"
       style={{ mixBlendMode: 'screen' }}
     />
   );
 }
 
-// ─── Entire Viewport Cockpit HUD (Arises dynamically from center) ────────────
+// ─── Entire Viewport Cockpit HUD (Emerging / sliding open from very center) ──
 function JarvisCockpitHud({ isSpeaking }) {
-  // Arises (scales out & blooms in opacity) majestically from center when speaking
-  const scaleVal = isSpeaking ? 'scale(1.0)' : 'scale(0.58)';
-  const opacityVal = isSpeaking ? 1.0 : 0.22;
+  const opacityVal = isSpeaking ? 0.95 : 0.35;
 
   return (
     <div 
-      className="fixed inset-0 pointer-events-none z-20 flex items-center justify-center transition-all duration-[900ms] ease-[cubic-bezier(0.19,1,0.22,1)]"
-      style={{
-        transform: scaleVal,
-        opacity: opacityVal,
-        transformOrigin: 'center center',
-      }}
+      className="fixed inset-0 pointer-events-none z-20 flex items-center justify-center transition-opacity duration-700 ease-in-out"
+      style={{ opacity: opacityVal }}
     >
-      {/* Sleek corner brackets overlay framing viewport */}
+      {/* Corner brackets which literally merge/converge to center and slide out */}
       <CyberHudBrackets isSpeaking={isSpeaking} />
 
-      {/* Dynamic 3D stacked diamond prism hologram spinning in the center */}
+      {/* Giant 3D stacked diamond prism hologram spinning in the center */}
       <CentralPrismHologram isSpeaking={isSpeaking} />
       
     </div>
@@ -1003,10 +996,23 @@ export default function InterviewScreen({
               return (
                 <div key={i} className={`flex flex-col max-w-[84%] fade-up ${isJ ? 'self-start' : 'self-end'}`}>
                   <div
-                    className="px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap"
+                    className="px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap font-medium border shadow-lg"
                     style={isJ
-                      ? { background: 'rgba(13,17,23,0.8)', border: '1px solid rgba(255,255,255,0.07)', color: '#e2e8f0', borderRadius: '1rem 1rem 1rem 3px' }
-                      : { background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: 'white', borderRadius: '1rem 1rem 3px 1rem' }
+                      ? { 
+                          background: 'rgba(10, 16, 32, 0.95)', 
+                          borderColor: 'rgba(59, 130, 246, 0.3)', 
+                          color: '#e0f2fe', // soft glowing ice-cyan tint for futuristic beauty & maximum readability
+                          borderRadius: '1.1rem 1.1rem 1.1rem 4px',
+                          borderLeft: '4px solid #3b82f6',
+                          boxShadow: '0 4px 20px rgba(0,0,0,0.45)'
+                        }
+                      : { 
+                          background: 'linear-gradient(135deg, #1d4ed8, #1e40af)', 
+                          borderColor: 'rgba(255,255,255,0.1)',
+                          color: '#f0f9ff', // soft glowing silver-blue tint for cohesive elegant contrast 
+                          borderRadius: '1.1rem 1.1rem 4px 1.1rem',
+                          boxShadow: '0 4px 16px rgba(29,78,216,0.3)'
+                        }
                     }
                   >
                     {msg.text}
