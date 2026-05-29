@@ -823,6 +823,7 @@ export default function InterviewScreen({
   const [excalidrawAPI, setExcalidrawAPI] = useState(null);
   const [noSpeechAPI,   setNoSpeechAPI]   = useState(false);
   const [speechError,   setSpeechError]   = useState('');
+  const [micToggleCount, setMicToggleCount] = useState(0);
 
   // Immersive settings modal states
   const [settingsOpen,  setSettingsOpen]  = useState(false);
@@ -950,6 +951,7 @@ export default function InterviewScreen({
 
   // ── mic toggle ─────────────────────────────────────────────────────────────
   const toggleMic = useCallback(() => {
+    setMicToggleCount(c => c + 1);
     setSpeechError(''); // Reset errors when mic is toggled
     if (micActive) {
       recRef.current?.stop();
@@ -1395,18 +1397,20 @@ export default function InterviewScreen({
             <div className="flex justify-between items-center px-0.5">
               <div className="flex items-center gap-3 flex-1 mr-4">
                 <span className="text-[10px] text-navy-800 shrink-0">SWE Technical Interview Simulator</span>
-                <input
-                  type="text"
-                  placeholder="write your answer (fallback)..."
-                  className="bg-transparent border-none outline-none text-[10px] text-gray-600 placeholder-navy-800 flex-1 min-w-0"
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && e.target.value.trim()) {
-                      handleSend(e.target.value);
-                      e.target.value = '';
-                    }
-                  }}
-                  disabled={isLoading || isSpeaking || micActive}
-                />
+                {micToggleCount >= 3 && (
+                  <input
+                    type="text"
+                    placeholder="write your answer (fallback)..."
+                    className="bg-transparent border-none outline-none text-[10px] text-gray-600 placeholder-navy-800 flex-1 min-w-0"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && e.target.value.trim()) {
+                        handleSend(e.target.value);
+                        e.target.value = '';
+                      }
+                    }}
+                    disabled={isLoading || isSpeaking || micActive}
+                  />
+                )}
               </div>
               <button
                 id="feedback-btn"
