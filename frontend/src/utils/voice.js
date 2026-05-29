@@ -122,6 +122,7 @@ export function createRecognition({ onInterim, onEnd, onError }) {
 
   rec.onerror = e => {
     if (e.error === 'no-speech') return;
+    if (e.error === 'network')   return;
     if (e.error === 'aborted')   return;
     console.error('SpeechRecognition error:', e.error);
     onError?.(e.error);

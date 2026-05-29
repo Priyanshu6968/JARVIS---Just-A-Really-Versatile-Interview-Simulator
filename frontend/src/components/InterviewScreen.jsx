@@ -802,7 +802,7 @@ function PhaseBanner({ text, onDone }) {
     <div className="absolute inset-x-0 top-0 z-40 flex justify-center pointer-events-none">
       <div className="phase-banner mt-16 px-6 py-3 rounded-2xl text-white font-bold text-sm flex items-center gap-2 shadow-2xl"
         style={{ background: 'linear-gradient(135deg, #2563eb, #6366f1)', boxShadow: '0 8px 32px rgba(59,130,246,0.4)' }}>
-        <span className="animate-pulse">⚡</span> {text}
+        <span></span> {text}
       </div>
     </div>
   );
@@ -824,6 +824,7 @@ export default function InterviewScreen({
   const [noSpeechAPI,   setNoSpeechAPI]   = useState(false);
   const [speechError,   setSpeechError]   = useState('');
   const [micToggleCount, setMicToggleCount] = useState(0);
+  const [isTypingMode, setIsTypingMode] = useState(false);
 
   // Immersive settings modal states
   const [settingsOpen,  setSettingsOpen]  = useState(false);
@@ -1090,7 +1091,7 @@ export default function InterviewScreen({
                       background: active ? m.color : done ? '#16a34a' : '#21262d',
                       color: active || done ? 'white' : '#484f58',
                     }}
-                  >{done ? '✓' : i}</span>
+                  >{done ? 'Done' : i}</span>
                   <span className="hidden sm:block">{m.short}</span>
                 </div>
               </React.Fragment>
@@ -1101,7 +1102,7 @@ export default function InterviewScreen({
         {/* Right controls */}
         <div className="flex items-center gap-2 shrink-0">
           <div className="font-mono text-xs bg-navy-800 border border-navy-700 rounded-lg px-2.5 py-1 text-navy-400">
-            ⏱ {fmtTime(elapsed)}
+            {fmtTime(elapsed)}
           </div>
           <button id="req-drawer-btn" onClick={() => setDrawerOpen(v => !v)}
             className="px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all"
@@ -1110,7 +1111,7 @@ export default function InterviewScreen({
               borderColor: drawerOpen ? 'rgba(59,130,246,0.5)' : '#21262d',
               color: drawerOpen ? '#60a5fa' : '#6b7280',
             }}>
-            📋 Req's
+            Req's
           </button>
           <button id="settings-btn"
             onClick={() => {
@@ -1125,7 +1126,7 @@ export default function InterviewScreen({
               color: settingsOpen ? '#60a5fa' : '#6b7280',
             }}
             title="Configure AI Settings">
-            ⚙️
+            Settings
           </button>
           <button id="mute-btn"
             onClick={() => { setIsMuted(m => { if (!m) stopSpeaking(); return !m; }); }}
@@ -1136,7 +1137,7 @@ export default function InterviewScreen({
               color: isMuted ? '#f87171' : '#6b7280',
             }}
             title={isMuted ? 'Unmute JARVIS' : 'Mute JARVIS'}>
-            {isMuted ? '🔇' : '🔊'}
+            {isMuted ? 'Mute' : 'Vol'}
           </button>
         </div>
       </header>
@@ -1179,7 +1180,7 @@ export default function InterviewScreen({
           {noSpeechAPI && (
             <div className="shrink-0 px-4 py-2 border-b border-amber-500/30 text-amber-400 text-xs flex items-center gap-2"
               style={{ background: 'rgba(245,158,11,0.05)' }}>
-              ⚠️ Voice input not supported — please use Chrome for mic features.
+              Voice input not supported — please use Chrome for mic features.
             </div>
           )}
 
@@ -1187,7 +1188,7 @@ export default function InterviewScreen({
           <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
             {messages.length === 0 && !isLoading && (
               <div className="glass-blue rounded-2xl p-4 text-xs text-navy-300 leading-relaxed fade-up">
-                <p className="font-bold mb-1" style={{ color: meta.color }}>🎯 {session.problem.title}</p>
+                <p className="font-bold mb-1" style={{ color: meta.color }}>{session.problem.title}</p>
                 <p>JARVIS will interview you across 6 core SWE areas in one go. Respond via voice or text.</p>
               </div>
             )}
@@ -1227,7 +1228,7 @@ export default function InterviewScreen({
 
             {isLoading && <TypingDots />}
 
-            {micActive && liveText && (
+            {liveText && (
               <div className={`flex flex-col max-w-[84%] fade-up self-end mb-2`}>
                 <div
                   className="px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap font-medium border shadow-lg opacity-80"
@@ -1300,10 +1301,10 @@ export default function InterviewScreen({
                       }}
                     >
                       {isSpeaking
-                        ? '▶ Speaking'
+                        ? 'Speaking'
                         : micActive
-                          ? '◉ Listening'
-                          : '— Standby'}
+                          ? 'Listening'
+                          : 'Standby'}
                     </p>
                   </div>
                   <span className="text-[10px] text-navy-800 font-mono hidden sm:block">
@@ -1330,7 +1331,7 @@ export default function InterviewScreen({
                   boxShadow: '0 0 12px rgba(239,68,68,0.15)'
                 }}>
                 <div className="flex items-start gap-2">
-                  <span className="text-xs">⚠️</span>
+                  <span className="text-xs">!</span>
                   <p className="text-xs font-semibold text-red-400 leading-normal">
                     {speechError}
                   </p>
@@ -1339,7 +1340,7 @@ export default function InterviewScreen({
                   onClick={() => setSpeechError('')} 
                   className="text-red-400 hover:text-white text-xs font-bold leading-none shrink-0 px-1 py-0.5"
                 >
-                  ✕
+                  X
                 </button>
               </div>
             )}
@@ -1361,7 +1362,7 @@ export default function InterviewScreen({
                   transition: 'all 0.2s ease',
                 }}
               >
-                {micActive ? '⏹' : '🎙️'}
+                {micActive ? 'Stop' : 'Mic'}
                 {micActive && (
                   <span
                     className="absolute inset-0 rounded-xl"
@@ -1372,44 +1373,61 @@ export default function InterviewScreen({
 
               {/* Voice-First Status Indicator (Replaces traditional chatbot input) */}
               <div 
-                className="flex-1 min-w-0 rounded-xl px-4 py-3 border flex items-center justify-center transition-all cursor-pointer"
-                onClick={!isLoading && !isSpeaking ? toggleMic : undefined}
+                className="flex-1 min-w-0 rounded-xl px-4 py-3 border flex items-center justify-center transition-all cursor-pointer relative"
+                onClick={(!isLoading && !isSpeaking && !isTypingMode) ? toggleMic : undefined}
                 style={{
-                  background: micActive ? 'rgba(239,68,68,0.1)' : isLoading || isSpeaking ? 'rgba(34,211,238,0.05)' : 'rgba(245,158,11,0.1)',
-                  borderColor: micActive ? 'rgba(239,68,68,0.4)' : isLoading || isSpeaking ? 'rgba(34,211,238,0.2)' : 'rgba(245,158,11,0.4)',
+                  background: micActive ? 'rgba(239,68,68,0.1)' : isLoading || isSpeaking ? 'rgba(34,211,238,0.05)' : isTypingMode ? 'rgba(10,14,22,0.9)' : 'rgba(245,158,11,0.1)',
+                  borderColor: micActive ? 'rgba(239,68,68,0.4)' : isLoading || isSpeaking ? 'rgba(34,211,238,0.2)' : isTypingMode ? 'rgba(59,130,246,0.6)' : 'rgba(245,158,11,0.4)',
+                  boxShadow: isTypingMode ? '0 0 15px rgba(59,130,246,0.3)' : 'none',
                 }}
               >
-                <span 
-                  className={`text-sm font-medium ${micActive ? 'text-red-400 animate-pulse' : isLoading || isSpeaking ? 'text-cyan-400' : 'text-amber-400 animate-pulse'}`}
-                >
-                  {micActive 
-                    ? 'Listening... Press Space to submit.' 
-                    : isLoading 
-                      ? 'JARVIS is analyzing...' 
-                      : isSpeaking 
-                        ? 'JARVIS is speaking...' 
-                        : 'Waiting for your response. (Press Space to speak)'}
-                </span>
+                {isTypingMode ? (
+                  <input
+                    type="text"
+                    autoFocus
+                    value={liveText}
+                    onChange={e => setLiveText(e.target.value)}
+                    placeholder="Type your answer here..."
+                    className="w-full bg-transparent border-none outline-none text-sm text-gray-200 placeholder-gray-500"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && liveText.trim()) {
+                        handleSend(liveText);
+                        setLiveText('');
+                        setIsTypingMode(false);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!liveText.trim()) setIsTypingMode(false);
+                    }}
+                    disabled={isLoading || isSpeaking}
+                  />
+                ) : (
+                  <span 
+                    className={`text-sm font-medium ${micActive ? 'text-red-400 animate-pulse' : isLoading || isSpeaking ? 'text-cyan-400' : 'text-amber-400 animate-pulse'}`}
+                  >
+                    {micActive 
+                      ? 'Listening... Press Space to submit.' 
+                      : isLoading 
+                        ? 'JARVIS is analyzing...' 
+                        : isSpeaking 
+                          ? 'JARVIS is speaking...' 
+                          : 'Waiting for your response. (Press Space to speak)'}
+                  </span>
+                )}
               </div>
             </div>
 
             {/* Footer row */}
             <div className="flex justify-between items-center px-0.5">
-              <div className="flex items-center gap-3 flex-1 mr-4">
-                <span className="text-[10px] text-navy-800 shrink-0">SWE Technical Interview Simulator</span>
-                {micToggleCount >= 2 && (
-                  <input
-                    type="text"
-                    placeholder="write your answer (fallback)..."
-                    className="bg-transparent border-none outline-none text-[11px] text-gray-400 placeholder-gray-600 flex-1 min-w-0"
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && e.target.value.trim()) {
-                        handleSend(e.target.value);
-                        e.target.value = '';
-                      }
-                    }}
-                    disabled={isLoading || isSpeaking || micActive}
-                  />
+              <div className="flex items-center gap-4 flex-1 mr-4">
+                <span className="text-[10px] text-navy-800 shrink-0 hidden sm:block">SWE Technical Interview Simulator</span>
+                {micToggleCount >= 2 && !isTypingMode && (
+                  <button
+                    onClick={() => setIsTypingMode(true)}
+                    className="text-[11px] font-bold text-gray-400 hover:text-white transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md border border-gray-700/50 hover:bg-gray-800/50 whitespace-nowrap"
+                  >
+                    Write Answer
+                  </button>
                 )}
               </div>
               <button
@@ -1420,7 +1438,7 @@ export default function InterviewScreen({
                 onMouseEnter={e => (e.target.style.color = '#60a5fa')}
                 onMouseLeave={e => (e.target.style.color = '#3b82f6')}
               >
-                🏆 Get Scorecard
+                Get Scorecard
               </button>
             </div>
           </div>
@@ -1438,7 +1456,6 @@ export default function InterviewScreen({
           boxShadow: showCanvas ? 'none' : '0 4px 20px rgba(37,99,235,0.4)',
         }}
       >
-        <span>{showCanvas ? '✕' : '✏️'}</span>
         <span>{showCanvas ? 'Close Canvas' : 'Use Canvas'}</span>
       </button>
 
@@ -1448,8 +1465,8 @@ export default function InterviewScreen({
         style={{ background: 'rgba(10,16,28,0.98)', borderLeft: '1px solid #21262d', backdropFilter: 'blur(16px)' }}
       >
         <div className="p-4 border-b border-navy-800 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">📋 Requirements</h3>
-          <button onClick={() => setDrawerOpen(false)} className="text-navy-600 hover:text-white text-lg leading-none">✕</button>
+          <h3 className="text-sm font-bold text-white flex items-center gap-2">Requirements</h3>
+          <button onClick={() => setDrawerOpen(false)} className="text-navy-600 hover:text-white text-lg leading-none">X</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 text-xs">
           <div>
@@ -1483,13 +1500,13 @@ export default function InterviewScreen({
             
             <div className="flex items-center justify-between border-b border-navy-800 pb-3">
               <h3 className="text-sm font-bold flex items-center gap-2 text-electric-400">
-                ⚙️ AI Connection Settings
+                AI Connection Settings
               </h3>
               <button 
                 onClick={() => setSettingsOpen(false)} 
                 className="text-navy-600 hover:text-white text-lg leading-none transition-colors"
               >
-                ✕
+                X
               </button>
             </div>
 
@@ -1550,7 +1567,7 @@ export default function InterviewScreen({
 
               {/* Security/Mock Warning */}
               <div className="text-[10px] leading-relaxed text-navy-400 p-3 rounded-xl border border-navy-800 bg-[#0d1117]/50">
-                💡 <strong>Privacy Notice:</strong> Keys are stored directly in your browser's secure <code>localStorage</code>. They only transit to your backend proxy to make direct secure API calls to the provider. 
+                <strong>Privacy Notice:</strong> Keys are stored directly in your browser's secure <code>localStorage</code>. They only transit to your backend proxy to make direct secure API calls to the provider. 
                 <br />
                 <span className="text-amber-400/90 mt-1 block">
                   * Leaving the Key field blank falls back to the backend's local high-fidelity simulated SWE round mode.
