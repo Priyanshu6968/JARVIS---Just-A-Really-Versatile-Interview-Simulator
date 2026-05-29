@@ -171,8 +171,8 @@ function EyeOverlay({ mousePos, imgRef }) {
   // Right socket center: ~620px from left, ~360px from top → 60.5% / 35.2%
   // Socket radius: ~29px → 2.8% of image width
   const EYES = [
-    { fx: 0.43, fy: 0.295, fr: 0.028 }, // left eye
-    { fx: 0.57, fy: 0.295, fr: 0.028 }, // right eye
+    { fx: 0.43, fy: 0.295, fr: 0.0305 }, // left eye
+    { fx: 0.57, fy: 0.295, fr: 0.0305 }, // right eye
   ];
 
   useEffect(() => {
@@ -197,10 +197,25 @@ function EyeOverlay({ mousePos, imgRef }) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       time += 0.04;
 
+      const now = performance.now();
+      const t_blink = now % 4000;
+      let blinkScale = 1;
+      if (t_blink < 100) {
+        blinkScale = 1 - (t_blink / 100);
+      } else if (t_blink < 200) {
+        blinkScale = (t_blink - 100) / 100;
+      }
+      blinkScale = Math.max(0.02, blinkScale);
+
       EYES.forEach(({ fx, fy, fr }) => {
         const cx = fx * rect.width;
         const cy = fy * rect.height;
         const r  = fr * rect.width;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(1, blinkScale);
+        ctx.translate(-cx, -cy);
 
         // Direction from eye to cursor
         const dx = mousePos.current.x - (rect.left + cx);
@@ -259,6 +274,8 @@ function EyeOverlay({ mousePos, imgRef }) {
         ctx.strokeStyle = `rgba(34,211,238,${0.35 + pulse * 0.5})`;
         ctx.lineWidth = 4;
         ctx.beginPath(); ctx.arc(cx, cy, r + 4, 0, Math.PI * 2); ctx.stroke();
+
+        ctx.restore();
       });
 
       animRef.current = requestAnimationFrame(render);
@@ -497,7 +514,7 @@ export default function LandingScreen({ onStart }) {
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="e.g. Priya Sharma"
+                  placeholder="e.g. Priyanshu Nigam"
                   className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
                   style={{ background: 'rgba(1,8,18,0.95)', border: '1px solid rgba(34,211,238,0.18)', color: '#e0f9ff', caretColor: '#22d3ee' }}
                   onFocus={e => e.target.style.borderColor = 'rgba(34,211,238,0.65)'}

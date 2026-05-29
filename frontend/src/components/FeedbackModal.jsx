@@ -25,7 +25,7 @@ const mdComponents = {
   blockquote: ({children}) => <blockquote className="border-l-4 border-electric-600 pl-4 italic text-navy-400 my-3">{children}</blockquote>,
 };
 
-export default function FeedbackModal({ isOpen, feedback, onClose, onRestart }) {
+export default function FeedbackModal({ isOpen, isLoading, feedback, onClose, onRestart }) {
   const [tab, setTab] = useState('dsa');
   if (!isOpen) return null;
 
@@ -45,8 +45,10 @@ export default function FeedbackModal({ isOpen, feedback, onClose, onRestart }) 
               <p className="text-navy-400 text-xs">Detailed Software Engineering performance review</p>
             </div>
           </div>
-          <button onClick={onClose}
-            className="p-2 rounded-xl hover:bg-navy-800 text-navy-500 hover:text-white transition-colors text-lg leading-none">✕</button>
+          {!isLoading && (
+            <button onClick={onClose}
+              className="p-2 rounded-xl hover:bg-navy-800 text-navy-500 hover:text-white transition-colors text-lg leading-none">✕</button>
+          )}
         </div>
 
         {/* Tabs */}
@@ -65,7 +67,26 @@ export default function FeedbackModal({ isOpen, feedback, onClose, onRestart }) 
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {content ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full gap-6 text-center">
+              {/* Pulsing orb */}
+              <div className="relative w-20 h-20">
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-electric-500 to-indigo-600 animate-ping opacity-30" />
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-electric-500 to-indigo-600 animate-pulse opacity-60" />
+                <div className="absolute inset-2 rounded-full bg-gradient-to-br from-electric-400 to-indigo-500 flex items-center justify-center text-2xl">🏆</div>
+              </div>
+              <div>
+                <p className="text-white font-semibold text-base mb-1">Generating your Scorecard…</p>
+                <p className="text-navy-400 text-sm">JARVIS is analysing all 6 stages of your interview</p>
+              </div>
+              {/* Animated dots */}
+              <div className="flex gap-2">
+                <span className="w-2 h-2 rounded-full bg-electric-500 dot1" />
+                <span className="w-2 h-2 rounded-full bg-electric-500 dot2" />
+                <span className="w-2 h-2 rounded-full bg-electric-500 dot3" />
+              </div>
+            </div>
+          ) : content ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{content}</ReactMarkdown>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center gap-4">

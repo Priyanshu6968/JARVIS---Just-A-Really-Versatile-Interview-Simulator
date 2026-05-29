@@ -94,35 +94,34 @@ export function createRecognition({ onInterim, onEnd, onError }) {
   if (!SR) return null;
 
   const rec = new SR();
-  rec.continuous      = true;   // ← THE FIX: keep mic open between words
+  rec.continuous      = false;  // Setting to false improves stability; we auto-restart on end anyway
   rec.interimResults  = true;
   rec.lang            = 'en-US';
   rec.maxAlternatives = 1;
 
-  let finalText      = '';
-  let interimText    = '';
-  let stoppedByUser  = false;   // true only when user clicks Stop
-  let started        = false;
+  let sessionAccumulatedText = '';
+  let currentSessionText = '';
+  let stoppedByUser = false;
+  let started = false;
 
   rec.onresult = e => {
-    interimText = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
+    let localFinalText = '';
+    let localInterimText = '';
+    for (let i = 0; i < e.results.length; i++) {
       const t = e.results[i][0].transcript;
       if (e.results[i].isFinal) {
-        finalText += t + ' ';
+        localFinalText += t + ' ';
       } else {
-        interimText += t;
+        localInterimText += t;
       }
     }
-    // Show accumulated final + current interim to the user
-    onInterim?.((finalText + interimText).trim());
+    currentSessionText = (localFinalText + localInterimText).trim();
+    const fullText = (sessionAccumulatedText + ' ' + currentSessionText).trim();
+    onInterim?.(fullText);
   };
 
   rec.onerror = e => {
-    // 'no-speech' fires when there's silence — with continuous=true we just
-    // keep going, no need to restart or surface this to the user.
     if (e.error === 'no-speech') return;
-    // 'aborted' fires when we call abort() intentionally — ignore.
     if (e.error === 'aborted')   return;
     console.error('SpeechRecognition error:', e.error);
     onError?.(e.error);
@@ -131,20 +130,23 @@ export function createRecognition({ onInterim, onEnd, onError }) {
   rec.onend = () => {
     if (stoppedByUser) {
       // Deliver the final accumulated transcript
-      onEnd?.((finalText + interimText).trim());
+      const fullText = (sessionAccumulatedText + ' ' + currentSessionText).trim();
+      onEnd?.(fullText);
     } else if (started) {
-      // Browser ended us unexpectedly (network hiccup, tab focus loss, etc.)
-      // Restart transparently so the mic stays open.
+      // Browser ended us unexpectedly (network hiccup, silence timeout, etc.)
+      // Save the text we gathered so far before restarting the session!
+      sessionAccumulatedText = (sessionAccumulatedText + ' ' + currentSessionText).trim();
+      currentSessionText = '';
       try { rec.start(); } catch (_) { /* already started */ }
     }
   };
 
   return {
     start() {
-      finalText     = '';
-      interimText   = '';
+      sessionAccumulatedText = '';
+      currentSessionText = '';
       stoppedByUser = false;
-      started       = true;
+      started = true;
       try { rec.start(); } catch (_) {}
     },
     stop() {

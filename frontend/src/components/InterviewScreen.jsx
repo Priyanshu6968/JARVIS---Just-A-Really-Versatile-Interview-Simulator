@@ -227,6 +227,83 @@ function VoiceWavesCanvas({ isSpeaking, micActive }) {
   );
 }
 
+// ─── Floating Ambient Particles ───────────────────────────────────────────────
+function AmbientParticles() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+    let width = 0;
+    let height = 0;
+
+    const resize = () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width * window.devicePixelRatio;
+      canvas.height = height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const particles = [];
+    const colors = ['rgba(236,72,153,', 'rgba(34,211,238,', 'rgba(168,85,247,']; // pink, cyan, purple
+
+    for (let i = 0; i < 40; i++) {
+      particles.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        size: Math.random() * 2.5 + 0.5,
+        colorBase: colors[Math.floor(Math.random() * colors.length)],
+        alpha: Math.random() * 0.5 + 0.1,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+
+    let time = 0;
+    const animate = () => {
+      ctx.clearRect(0, 0, width, height);
+      time += 0.02;
+
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < -10) p.x = width + 10;
+        if (p.x > width + 10) p.x = -10;
+        if (p.y < -10) p.y = height + 10;
+        if (p.y > height + 10) p.y = -10;
+
+        const currentAlpha = p.alpha + Math.sin(time + p.phase) * 0.2;
+        
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `${p.colorBase}${Math.max(0.05, currentAlpha)})`;
+        ctx.shadowBlur = p.size * 3;
+        ctx.shadowColor = `${p.colorBase}0.8)`;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-0 w-full h-full opacity-70" />;
+}
+
 // ─── Majestic Fullscreen Ambient Sine Waves ──────────────────────────────────
 function AmbientSineWaves({ isSpeaking, micActive }) {
   const canvasRef = useRef(null);
@@ -734,7 +811,8 @@ function PhaseBanner({ text, onDone }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function InterviewScreen({
   session, phase, messages, isLoading, isSpeaking, setIsSpeaking,
-  onSendMessage, onGetFeedback, requirementsSummary, phaseBanner, onBannerDone
+  onSendMessage, onGetFeedback, requirementsSummary, phaseBanner, onBannerDone,
+  aiProvider, setAiProvider, aiApiKey, setAiApiKey
 }) {
   const [inputText,     setInputText]     = useState('');
   const [isMuted,       setIsMuted]       = useState(false);
@@ -744,17 +822,24 @@ export default function InterviewScreen({
   const [drawerOpen,    setDrawerOpen]    = useState(false);
   const [excalidrawAPI, setExcalidrawAPI] = useState(null);
   const [noSpeechAPI,   setNoSpeechAPI]   = useState(false);
+  const [speechError,   setSpeechError]   = useState('');
+
+  // Immersive settings modal states
+  const [settingsOpen,  setSettingsOpen]  = useState(false);
+  const [tempProvider,  setTempProvider]  = useState(aiProvider);
+  const [tempApiKey,    setTempApiKey]    = useState(aiApiKey);
 
   const bottomRef      = useRef(null);
   const recRef         = useRef(null);
   const isMutedRef     = useRef(false);
   const sendRef        = useRef(null);
   const lastSpokenIdx  = useRef(-1);
+  const idleLevel      = useRef(0);
 
   isMutedRef.current = isMuted;
 
   const meta      = PHASE_META[phase] || PHASE_META[1];
-  const showCanvas = true;
+  const [showCanvas, setShowCanvas] = useState(false);
 
   // ── timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -768,6 +853,37 @@ export default function InterviewScreen({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
+
+  // ── idle timer (45s and 90s prompts) ──────────────────────────────────────
+  useEffect(() => {
+    let t;
+    if (!isLoading && !micActive) {
+      if (!isSpeaking) {
+        if (idleLevel.current === 0) {
+          t = setTimeout(() => {
+            idleLevel.current = 1;
+            speakText("Take your time. Let me know if you want to brainstorm out loud.", {
+              isMuted: isMutedRef.current,
+              onStart: () => setIsSpeaking(true),
+              onEnd:   () => setIsSpeaking(false),
+            });
+          }, 45000);
+        } else if (idleLevel.current === 1) {
+          t = setTimeout(() => {
+            idleLevel.current = 2;
+            speakText("Are you still thinking, or would you like a hint?", {
+              isMuted: isMutedRef.current,
+              onStart: () => setIsSpeaking(true),
+              onEnd:   () => setIsSpeaking(false),
+            });
+          }, 45000);
+        }
+      }
+    } else {
+      idleLevel.current = 0;
+    }
+    return () => clearTimeout(t);
+  }, [isLoading, isSpeaking, micActive]);
 
   // ── speak new assistant messages ───────────────────────────────────────────
   useEffect(() => {
@@ -818,22 +934,69 @@ export default function InterviewScreen({
 
   sendRef.current = handleSend;
 
+  // ── secure origin on-mount check ──
+  useEffect(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      const isSecure = window.isSecureContext !== false && 
+        (window.location.protocol === 'https:' || 
+         window.location.hostname === 'localhost' || 
+         window.location.hostname === '127.0.0.1');
+      if (!isSecure) {
+        setSpeechError('Insecure Connection: Chrome restricts Speech Recognition to secure origins (HTTPS or localhost). Please run on localhost or configure HTTPS.');
+      }
+    }
+  }, []);
+
   // ── mic toggle ─────────────────────────────────────────────────────────────
   const toggleMic = useCallback(() => {
+    setSpeechError(''); // Reset errors when mic is toggled
     if (micActive) {
       recRef.current?.stop();
       return;
     }
     const rec = createRecognition({
-      onInterim: t  => setLiveText(t),
+      onInterim: t  => {
+        setLiveText(t);
+        setSpeechError(''); // Clear error if we get some text
+      },
       onEnd: finalT => {
         setMicActive(false);
         setLiveText('');
         if (finalT) sendRef.current(finalT);
       },
-      onError: () => { setMicActive(false); setLiveText(''); },
+      onError: err => {
+        setMicActive(false);
+        setLiveText('');
+        console.error('Speech recognition error callback:', err);
+        
+        let msg = 'Speech recognition error.';
+        if (err === 'not-allowed') {
+          msg = 'Microphone permission blocked. Please click the camera/microphone icon in your address bar and choose "Allow".';
+        } else if (err === 'audio-capture') {
+          msg = 'No microphone hardware found. Please connect a microphone and try again.';
+        } else if (err === 'network') {
+          msg = 'Network error occurred during speech recognition.';
+        } else if (err === 'no-speech') {
+          msg = 'No speech detected. Please check your mic connection or speak louder.';
+        } else {
+          msg = `Speech recognition error: ${err}`;
+        }
+        setSpeechError(msg);
+      },
     });
-    if (!rec) { setNoSpeechAPI(true); return; }
+    if (!rec) {
+      const isSecure = window.isSecureContext !== false && 
+        (window.location.protocol === 'https:' || 
+         window.location.hostname === 'localhost' || 
+         window.location.hostname === '127.0.0.1');
+      if (!isSecure) {
+        setSpeechError('Insecure Connection: Chrome restricts Speech Recognition to secure origins (HTTPS or localhost). Please run on localhost or configure HTTPS.');
+      } else {
+        setNoSpeechAPI(true);
+      }
+      return;
+    }
     recRef.current = rec;
     stopSpeaking();
     setIsSpeaking(false);
@@ -841,6 +1004,15 @@ export default function InterviewScreen({
     setLiveText('');
     rec.start();
   }, [micActive]);
+
+  // ── cleanup zombie mics on unmount ─────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (recRef.current) {
+        try { recRef.current.abort(); } catch (_) {}
+      }
+    };
+  }, []);
 
   // ── keyboard shortcuts ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -858,6 +1030,13 @@ export default function InterviewScreen({
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-[#040814] relative">
+
+      {/* Ambient Pink Glow */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <AmbientParticles />
+        <div className="absolute bottom-[10%] right-[10%] w-[40%] h-[40%] bg-pink-900/20 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute top-[10%] left-[10%] w-[40%] h-[40%] bg-rose-900/10 blur-[130px] rounded-full mix-blend-screen" />
+      </div>
 
       {/* Breathtaking Fullscreen Ambient Sine Waves Visualizer */}
       <AmbientSineWaves isSpeaking={isSpeaking} micActive={micActive} />
@@ -931,6 +1110,21 @@ export default function InterviewScreen({
             }}>
             📋 Req's
           </button>
+          <button id="settings-btn"
+            onClick={() => {
+              setTempProvider(aiProvider);
+              setTempApiKey(aiApiKey);
+              setSettingsOpen(true);
+            }}
+            className="p-2 rounded-xl border transition-all"
+            style={{
+              background: settingsOpen ? 'rgba(59,130,246,0.15)' : 'transparent',
+              borderColor: settingsOpen ? 'rgba(59,130,246,0.4)' : '#21262d',
+              color: settingsOpen ? '#60a5fa' : '#6b7280',
+            }}
+            title="Configure AI Settings">
+            ⚙️
+          </button>
           <button id="mute-btn"
             onClick={() => { setIsMuted(m => { if (!m) stopSpeaking(); return !m; }); }}
             className="p-2 rounded-xl border transition-all"
@@ -970,7 +1164,7 @@ export default function InterviewScreen({
         )}
 
         {/* RIGHT: Conversation (Transparent blur glassmorphism to show 3D background grid) */}
-        <div className={`flex flex-col bg-[#070b15]/65 backdrop-blur-md border-l border-navy-800/60 ${showCanvas ? 'w-[420px] shrink-0' : 'flex-1'} h-full z-10`}>
+        <div className={`flex flex-col bg-[#070b15]/65 backdrop-blur-md border-l border-navy-800/60 w-[420px] shrink-0 ml-auto h-full z-10`}>
 
           {/* Phase badge */}
           <div className="shrink-0 px-4 py-2 border-b border-navy-800 flex items-center gap-2"
@@ -1030,6 +1224,27 @@ export default function InterviewScreen({
             })}
 
             {isLoading && <TypingDots />}
+
+            {micActive && liveText && (
+              <div className={`flex flex-col max-w-[84%] fade-up self-end mb-2`}>
+                <div
+                  className="px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap font-medium border shadow-lg opacity-80"
+                  style={{ 
+                    background: 'linear-gradient(135deg, #1d4ed8, #1e40af)', 
+                    borderColor: 'rgba(255,255,255,0.2)',
+                    color: '#f0f9ff', 
+                    borderRadius: '1.1rem 1.1rem 4px 1.1rem',
+                  }}
+                >
+                  {liveText}
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping inline-block ml-1 mb-[2px]" />
+                </div>
+                <span className="text-[10px] text-red-400 mt-1 mr-1 self-end font-bold animate-pulse">
+                  Listening…
+                </span>
+              </div>
+            )}
+
             <div ref={bottomRef} />
           </div>
 
@@ -1104,20 +1319,30 @@ export default function InterviewScreen({
           <div className="shrink-0 p-3 border-t border-navy-800 flex flex-col gap-2"
             style={{ background: 'rgba(13,17,23,0.95)' }}>
 
-            {/* Live transcript */}
-            {micActive && (
-              <div className="fade-up rounded-xl px-3 py-2 border"
-                style={{ background: 'rgba(239,68,68,0.04)', borderColor: 'rgba(239,68,68,0.2)' }}>
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
-                  <span className="text-[10px] font-bold text-red-400">Listening…</span>
+            {/* Speech recognition neon warning/error banner */}
+            {speechError && (
+              <div className="fade-up rounded-xl px-3 py-2.5 border flex items-start justify-between gap-2"
+                style={{ 
+                  background: 'rgba(239,68,68,0.08)', 
+                  borderColor: 'rgba(239,68,68,0.4)',
+                  boxShadow: '0 0 12px rgba(239,68,68,0.15)'
+                }}>
+                <div className="flex items-start gap-2">
+                  <span className="text-xs">⚠️</span>
+                  <p className="text-xs font-semibold text-red-400 leading-normal">
+                    {speechError}
+                  </p>
                 </div>
-                <p className="text-xs text-navy-200 italic min-h-[16px]">
-                  {liveText || 'Start speaking…'}
-                </p>
+                <button 
+                  onClick={() => setSpeechError('')} 
+                  className="text-red-400 hover:text-white text-xs font-bold leading-none shrink-0 px-1 py-0.5"
+                >
+                  ✕
+                </button>
               </div>
             )}
 
+            {/* Old Live transcript removed to move it directly into the chat window */}
             <div className="flex items-center gap-2">
               {/* Mic button */}
               <button
@@ -1143,38 +1368,27 @@ export default function InterviewScreen({
                 )}
               </button>
 
-              {/* Text input */}
-              <input
-                id="message-input"
-                type="text"
-                value={inputText}
-                onChange={e => setInputText(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                disabled={isLoading}
-                placeholder={micActive ? 'Listening via mic…' : 'Type your answer or press Space to speak…'}
-                className="flex-1 min-w-0 rounded-xl px-4 py-3 text-sm text-white placeholder-navy-600 disabled:opacity-40 transition-all border"
+              {/* Voice-First Status Indicator (Replaces traditional chatbot input) */}
+              <div 
+                className="flex-1 min-w-0 rounded-xl px-4 py-3 border flex items-center justify-center transition-all cursor-pointer"
+                onClick={!isLoading && !isSpeaking ? toggleMic : undefined}
                 style={{
-                  background: 'rgba(6,13,26,0.8)',
-                  borderColor: '#21262d',
-                  outline: 'none',
-                }}
-                onFocus={e  => (e.target.style.borderColor = '#3b82f6')}
-                onBlur={e   => (e.target.style.borderColor = '#21262d')}
-              />
-
-              {/* Send */}
-              <button
-                id="send-btn"
-                onClick={() => handleSend()}
-                disabled={!inputText.trim() || isLoading}
-                className="shrink-0 p-3 rounded-xl text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                style={{
-                  background: 'linear-gradient(135deg,#2563eb,#1d4ed8)',
-                  boxShadow: inputText.trim() ? '0 0 12px rgba(37,99,235,0.4)' : 'none',
+                  background: micActive ? 'rgba(239,68,68,0.1)' : isLoading || isSpeaking ? 'rgba(34,211,238,0.05)' : 'rgba(245,158,11,0.1)',
+                  borderColor: micActive ? 'rgba(239,68,68,0.4)' : isLoading || isSpeaking ? 'rgba(34,211,238,0.2)' : 'rgba(245,158,11,0.4)',
                 }}
               >
-                ➤
-              </button>
+                <span 
+                  className={`text-sm font-medium ${micActive ? 'text-red-400 animate-pulse' : isLoading || isSpeaking ? 'text-cyan-400' : 'text-amber-400 animate-pulse'}`}
+                >
+                  {micActive 
+                    ? 'Listening... Press Space to submit.' 
+                    : isLoading 
+                      ? 'JARVIS is analyzing...' 
+                      : isSpeaking 
+                        ? 'JARVIS is speaking...' 
+                        : 'Waiting for your response. (Press Space to speak)'}
+                </span>
+              </div>
             </div>
 
             {/* Footer row */}
@@ -1194,6 +1408,21 @@ export default function InterviewScreen({
           </div>
         </div>
       </div>
+
+      {/* ══ CANVAS TOGGLE BUTTON ═══════════════════════════════════════════════ */}
+      <button
+        onClick={() => setShowCanvas(!showCanvas)}
+        className="absolute bottom-6 left-6 z-40 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+        style={{
+          background: showCanvas ? 'rgba(15, 23, 42, 0.6)' : 'linear-gradient(135deg, rgba(37,99,235,0.8), rgba(29,78,216,0.8))',
+          backdropFilter: 'blur(8px)',
+          border: showCanvas ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(96,165,250,0.3)',
+          boxShadow: showCanvas ? 'none' : '0 4px 20px rgba(37,99,235,0.4)',
+        }}
+      >
+        <span>{showCanvas ? '✕' : '✏️'}</span>
+        <span>{showCanvas ? 'Close Canvas' : 'Use Canvas'}</span>
+      </button>
 
       {/* ══ REQUIREMENTS DRAWER ═════════════════════════════════════════════════ */}
       <div
@@ -1227,6 +1456,118 @@ export default function InterviewScreen({
           </div>
         </div>
       </div>
+
+      {/* ══ FROSTED SETTINGS MODAL ═════════════════════════════════════════════ */}
+      {settingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-fade-in">
+          <div className="glass rounded-2xl w-full max-w-md p-6 border border-navy-800 flex flex-col gap-4 text-white shadow-2xl relative animate-tv-on"
+            style={{ background: 'rgba(10, 16, 28, 0.95)', boxShadow: '0 0 32px rgba(59, 130, 246, 0.2)' }}>
+            
+            <div className="flex items-center justify-between border-b border-navy-800 pb-3">
+              <h3 className="text-sm font-bold flex items-center gap-2 text-electric-400">
+                ⚙️ AI Connection Settings
+              </h3>
+              <button 
+                onClick={() => setSettingsOpen(false)} 
+                className="text-navy-600 hover:text-white text-lg leading-none transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {/* Provider Selection */}
+              <div>
+                <label className="text-[10px] font-bold text-navy-600 uppercase tracking-wider mb-1.5 block">
+                  Select AI Provider
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'gemini', name: 'Google Gemini' },
+                    { id: 'anthropic', name: 'Anthropic' },
+                    { id: 'openai', name: 'OpenAI' }
+                  ].map(p => {
+                    const active = tempProvider === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setTempProvider(p.id)}
+                        className={`py-2 px-1 rounded-xl border text-[11px] font-semibold transition-all text-center`}
+                        style={{
+                          background: active ? 'rgba(59, 130, 246, 0.15)' : 'rgba(6, 13, 26, 0.5)',
+                          borderColor: active ? '#60a5fa' : '#21262d',
+                          color: active ? '#60a5fa' : '#6b7280',
+                          boxShadow: active ? '0 0 8px rgba(59, 130, 246, 0.25)' : 'none'
+                        }}
+                      >
+                        {p.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* API Key */}
+              <div>
+                <label className="text-[10px] font-bold text-navy-600 uppercase tracking-wider mb-1.5 block">
+                  API Key
+                </label>
+                <input
+                  type="password"
+                  value={tempApiKey}
+                  onChange={e => setTempApiKey(e.target.value)}
+                  placeholder={
+                    tempProvider === 'gemini' ? 'AIzaSy...' :
+                    tempProvider === 'openai' ? 'sk-proj-...' : 'sk-ant-...'
+                  }
+                  className="w-full rounded-xl px-4 py-2.5 text-xs text-white placeholder-navy-600 transition-all border outline-none"
+                  style={{
+                    background: 'rgba(6, 13, 26, 0.8)',
+                    borderColor: '#21262d',
+                  }}
+                  onFocus={e  => (e.target.style.borderColor = '#3b82f6')}
+                  onBlur={e   => (e.target.style.borderColor = '#21262d')}
+                />
+              </div>
+
+              {/* Security/Mock Warning */}
+              <div className="text-[10px] leading-relaxed text-navy-400 p-3 rounded-xl border border-navy-800 bg-[#0d1117]/50">
+                💡 <strong>Privacy Notice:</strong> Keys are stored directly in your browser's secure <code>localStorage</code>. They only transit to your backend proxy to make direct secure API calls to the provider. 
+                <br />
+                <span className="text-amber-400/90 mt-1 block">
+                  * Leaving the Key field blank falls back to the backend's local high-fidelity simulated SWE round mode.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 justify-end border-t border-navy-800 pt-3">
+              <button
+                onClick={() => setSettingsOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-navy-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.setItem('jarvis_ai_provider', tempProvider);
+                  localStorage.setItem('jarvis_ai_apikey', tempApiKey.trim());
+                  setAiProvider(tempProvider);
+                  setAiApiKey(tempApiKey.trim());
+                  setSettingsOpen(false);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all active:scale-95"
+                style={{
+                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                  boxShadow: '0 0 12px rgba(37,99,235,0.4)'
+                }}
+              >
+                Save Settings
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

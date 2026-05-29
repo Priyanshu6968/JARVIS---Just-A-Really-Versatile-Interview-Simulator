@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
 
 const app = express();
@@ -73,9 +74,12 @@ const CLARIFY_RESPONSES = [
 
 function isOffTopic(text) {
   const lower = (text || '').toLowerCase().trim();
-  if (!lower || lower.length < 2) return false;
-  const words = lower.split(/\s+/);
-  return words.length > 0 && lower.length > 3;
+  if (!lower) return true;
+  if (lower.length < 2) return true;
+  // If user replies with specific off-topic gibberish
+  const gibberish = ['apples', 'banana', 'orange', 'xyz', 'test', 'asdf'];
+  if (gibberish.includes(lower)) return true;
+  return false;
 }
 
 function pick(arr, seed) {
@@ -432,7 +436,7 @@ function runMock(phase, messageType, messages, problemTitle, turnCount) {
 async function callClaude(systemPrompt, messages, apiKey) {
   const resp = await axios.post(
     'https://api.anthropic.com/v1/messages',
-    { model: 'claude-sonnet-4-20250514', max_tokens: 2048, system: systemPrompt, messages },
+    { model: 'claude-3-5-sonnet-20241022', max_tokens: 2048, system: systemPrompt, messages },
     {
       headers: {
         'x-api-key': apiKey,
@@ -445,11 +449,197 @@ async function callClaude(systemPrompt, messages, apiKey) {
   return resp.data.content[0].text;
 }
 
+// ─── Live Gemini call (official SDK — handles AQ. key format) ─────────────────
+async function callGemini(systemPrompt, messages, apiKey) {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    systemInstruction: systemPrompt,
+    generationConfig: {
+      responseMimeType: 'application/json'
+    }
+  });
+
+  // Convert message history to Gemini SDK format
+  const history = [];
+  const allMessages = [...messages];
+
+  // Split off last user message as the current prompt
+  const lastMsg = allMessages.pop();
+
+  for (const m of allMessages) {
+    let textContent = '';
+    if (typeof m.content === 'string') {
+      try {
+        const parsed = JSON.parse(m.content);
+        textContent = parsed.content || parsed.response || m.content;
+      } catch { textContent = m.content; }
+    } else if (Array.isArray(m.content)) {
+      const tb = m.content.find(b => b.type === 'text');
+      if (tb) {
+        try {
+          const parsed = JSON.parse(tb.text);
+          textContent = parsed.content || parsed.response || tb.text;
+        } catch { textContent = tb.text; }
+      }
+    } else {
+      textContent = m.text || '';
+    }
+    history.push({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: textContent }]
+    });
+  }
+
+  // Extract text from last message
+  let lastText = '';
+  if (typeof lastMsg.content === 'string') {
+    try {
+      const parsed = JSON.parse(lastMsg.content);
+      lastText = parsed.content || parsed.response || lastMsg.content;
+    } catch { lastText = lastMsg.content; }
+  } else if (Array.isArray(lastMsg.content)) {
+    const tb = lastMsg.content.find(b => b.type === 'text');
+    if (tb) {
+      try {
+        const parsed = JSON.parse(tb.text);
+        lastText = parsed.content || parsed.response || tb.text;
+      } catch { lastText = tb.text; }
+    }
+  } else {
+    lastText = lastMsg.text || '';
+  }
+
+  const chat = model.startChat({ history });
+  const result = await chat.sendMessage(lastText);
+  return result.response.text();
+}
+
+// ─── Live OpenAI call ──────────────────────────────────────────────────────────
+async function callOpenAI(systemPrompt, messages, apiKey) {
+  const formattedMessages = messages.map(m => {
+    let textContent = '';
+    if (typeof m.content === 'string') {
+      try {
+        const parsed = JSON.parse(m.content);
+        textContent = parsed.content || parsed.response || m.content;
+      } catch {
+        textContent = m.content;
+      }
+    } else if (Array.isArray(m.content)) {
+      const textBlock = m.content.find(b => b.type === 'text');
+      if (textBlock) {
+        try {
+          const parsed = JSON.parse(textBlock.text);
+          textContent = parsed.content || parsed.response || textBlock.text;
+        } catch {
+          textContent = textBlock.text;
+        }
+      }
+    } else {
+      textContent = m.text || '';
+    }
+
+    return { role: m.role === 'assistant' ? 'assistant' : 'user', content: textContent };
+  });
+
+  const resp = await axios.post(
+    'https://api.openai.com/v1/chat/completions',
+    {
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...formattedMessages
+      ],
+      response_format: { type: 'json_object' }
+    },
+    {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 35000
+    }
+  );
+
+  return resp.data.choices[0].message.content;
+}
+
+// ─── Live Groq call (OpenAI-compatible, free & fast) ───────────────────────
+async function callGroq(systemPrompt, messages, apiKey) {
+  const formattedMessages = messages.map(m => {
+    let textContent = '';
+    if (typeof m.content === 'string') {
+      try {
+        const parsed = JSON.parse(m.content);
+        textContent = parsed.content || parsed.response || m.content;
+      } catch { textContent = m.content; }
+    } else if (Array.isArray(m.content)) {
+      const tb = m.content.find(b => b.type === 'text');
+      if (tb) {
+        try {
+          const parsed = JSON.parse(tb.text);
+          textContent = parsed.content || parsed.response || tb.text;
+        } catch { textContent = tb.text; }
+      }
+    } else {
+      textContent = m.text || '';
+    }
+    return { role: m.role === 'assistant' ? 'assistant' : 'user', content: textContent };
+  });
+
+  const resp = await axios.post(
+    'https://api.groq.com/openai/v1/chat/completions',
+    {
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...formattedMessages
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
+      max_tokens: 1024
+    },
+    {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 35000
+    }
+  );
+
+  return resp.data.choices[0].message.content;
+}
+
 // ─── Main route ────────────────────────────────────────────────────────────────
 app.post('/api/interview', async (req, res) => {
-  const { phase, systemPrompt, messages, message_type, problemTitle, turnCount } = req.body;
+  const { phase, systemPrompt, messages, message_type, problemTitle, turnCount, customProvider, customApiKey } = req.body;
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  let provider = customProvider || 'anthropic';
+  let apiKey = customApiKey;
+
+  if (!apiKey) {
+    // Priority: GROQ_API_KEY > GEMINI_API_KEY > ANTHROPIC_API_KEY
+    const groqKey   = process.env.GROQ_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const legacyKey = process.env.ANTHROPIC_API_KEY;
+
+    if (groqKey) {
+      apiKey   = groqKey;
+      provider = 'groq';
+    } else if (geminiKey) {
+      apiKey   = geminiKey;
+      provider = 'gemini';
+    } else if (legacyKey) {
+      apiKey = legacyKey;
+      if (legacyKey.startsWith('sk-ant-'))     provider = 'anthropic';
+      else if (legacyKey.startsWith('sk-'))    provider = 'openai';
+      else if (legacyKey.startsWith('gsk_'))   provider = 'groq';
+      else                                      provider = 'gemini';
+    }
+  }
+
   const useMock = !apiKey || apiKey === 'your_anthropic_api_key_here';
 
   // ── MOCK MODE ──
@@ -461,37 +651,48 @@ app.post('/api/interview', async (req, res) => {
     return res.json(result);
   }
 
-  // ── LIVE CLAUDE MODE ──
-  console.log(`[LIVE] phase=${phase} type=${message_type} msgs=${messages?.length}`);
+  // ── LIVE AI MODE ──
+  console.log(`[LIVE] provider=${provider} phase=${phase} type=${message_type} msgs=${messages?.length}`);
   try {
     let raw;
+    const callAI = async () => {
+      if (provider === 'groq')         return callGroq(systemPrompt, messages, apiKey);
+      if (provider === 'gemini')       return callGemini(systemPrompt, messages, apiKey);
+      if (provider === 'openai')       return callOpenAI(systemPrompt, messages, apiKey);
+      return callClaude(systemPrompt, messages, apiKey);
+    };
+
     try {
-      raw = await callClaude(systemPrompt, messages, apiKey);
+      raw = await callAI();
     } catch (e1) {
-      console.warn('Claude attempt 1 failed:', e1.message, '— retrying in 1.5s');
+      console.warn(`${provider} attempt 1 failed:`, e1.message, '— retrying in 1.5s');
       await new Promise(r => setTimeout(r, 1500));
-      raw = await callClaude(systemPrompt, messages, apiKey);
+      raw = await callAI();
     }
 
     const parsed = safeParseJSON(raw);
     if (!parsed) {
-      return res.json({ proceed_to_next_step: false, summary: '', response: raw });
+      return res.json({ proceed_to_next_step: false, stage: phase, summary: '', response: raw });
     }
     return res.json(parsed);
   } catch (err) {
-    console.error('Claude API error:', err.response?.data || err.message);
-    return res.status(500).json({ error: 'Claude API failed', details: err.message });
+    console.error(`${provider} API error:`, err.response?.data || err.message);
+    return res.status(500).json({ error: `${provider} API failed`, details: err.message });
   }
 });
 
 app.get('/api/health', (_, res) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY;
   const mock = !apiKey || apiKey === 'your_anthropic_api_key_here';
-  res.json({ ok: true, mode: mock ? 'mock' : 'live' });
+  const provider = process.env.GROQ_API_KEY ? 'groq' : process.env.GEMINI_API_KEY ? 'gemini' : 'anthropic';
+  res.json({ ok: true, mode: mock ? 'mock' : 'live', provider });
 });
 
 app.listen(PORT, () => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  const mock = !apiKey || apiKey === 'your_anthropic_api_key_here';
-  console.log(`JARVIS backend :${PORT} | mode=${mock ? 'MOCK' : 'LIVE (Claude API)'}`);
+  const groqKey   = process.env.GROQ_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const legacyKey = process.env.ANTHROPIC_API_KEY;
+  const hasKey    = groqKey || geminiKey || legacyKey;
+  const provider  = groqKey ? 'Groq (llama-3.3-70b)' : geminiKey ? 'Gemini' : 'Claude/OpenAI';
+  console.log(`JARVIS backend :${PORT} | mode=${hasKey ? `LIVE (✅ ${provider})` : 'MOCK'}`);
 });

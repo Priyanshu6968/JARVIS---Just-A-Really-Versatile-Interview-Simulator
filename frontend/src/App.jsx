@@ -103,7 +103,12 @@ export default function App() {
   const [reqSummary,   setReqSummary]   = useState('');
   const [feedback,     setFeedback]     = useState({ dsa: '', projects: '', javascript: '', react: '', backend: '', behavioral: '' });
   const [fbOpen,       setFbOpen]       = useState(false);
+  const [fbLoading,    setFbLoading]    = useState(false);
   const [errorToast,   setErrorToast]   = useState('');
+
+  // Immersive settings states
+  const [aiProvider,   setAiProvider]   = useState(() => localStorage.getItem('jarvis_ai_provider') || 'anthropic');
+  const [aiApiKey,     setAiApiKey]     = useState(() => localStorage.getItem('jarvis_ai_apikey') || '');
   
   // Immersive transition states
   const [isCollapsing, setIsCollapsing] = useState(false);
@@ -111,6 +116,7 @@ export default function App() {
   const [singularity,  setSingularity]  = useState(false);
   
   const turnCount = useRef(0);
+  const completeRef = useRef(null); // avoids stale closure when referencing handleInterviewComplete
 
   const toast = msg => { setErrorToast(msg); setTimeout(() => setErrorToast(''), 3500); };
 
@@ -142,6 +148,8 @@ export default function App() {
       messages: [firstMsg],
       problemTitle: problem.title,
       turnCount: 0,
+      customProvider: aiProvider,
+      customApiKey: aiApiKey,
     }).then(result => {
       const text = result.response || `Hello! Let's begin the technical interview for ${problem.title}.`;
       setMessages([{ role: 'assistant', text }]);
@@ -168,7 +176,7 @@ export default function App() {
     await new Promise(r => setTimeout(r, 750));
     setIsExpanding(false);
     setSingularity(false);
-  }, []);
+  }, [aiProvider, aiApiKey]);
 
   // ── send message ────────────────────────────────────────────────────────
   const handleSendMessage = useCallback(async (text, base64Img = null) => {
@@ -189,6 +197,8 @@ export default function App() {
         messages: msgs,
         problemTitle: session?.problem?.title,
         turnCount: turnCount.current,
+        customProvider: aiProvider,
+        customApiKey: aiApiKey,
       });
 
       const assistantText = result.response || '';
@@ -205,6 +215,11 @@ export default function App() {
       const newHistory = [...msgs, { role: 'assistant', content: JSON.stringify(result) }];
       setApiHistory(newHistory);
 
+      // ── Auto-redirect to scorecard when interview is fully complete ──
+      if (result.proceed_to_next_step === true && result.stage >= 6) {
+        setTimeout(() => completeRef.current?.(newHistory), 2500);
+      }
+
     } catch (e) {
       console.error('Send error:', e);
       toast('Connection issue, retrying...');
@@ -215,7 +230,7 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, stage, apiHistory, session]);
+  }, [isLoading, stage, apiHistory, session, aiProvider, aiApiKey]);
 
   // ── get feedback ─────────────────────────────────────────────────────────
   const handleGetFeedback = useCallback(async () => {
@@ -231,6 +246,8 @@ export default function App() {
         messages: [...apiHistory, { role: 'user', content }],
         problemTitle: session?.problem?.title,
         turnCount: turnCount.current,
+        customProvider: aiProvider,
+        customApiKey: aiApiKey,
       });
 
       let parsed = result;
@@ -262,7 +279,63 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [stage, apiHistory, session]);
+  }, [stage, apiHistory, session, aiProvider, aiApiKey]);
+
+  // ── auto-complete: called when AI sets proceed_to_next_step=true ─────────
+  const handleInterviewComplete = useCallback(async (currentHistory) => {
+    // 1. Play TV-off collapse
+    setIsCollapsing(true);
+    setSingularity(true);
+    await new Promise(r => setTimeout(r, 750));
+
+    // 2. Open scorecard (show loading state) while screen switches
+    setFbOpen(true);
+    setFbLoading(true);
+    setIsCollapsing(false);
+    setIsExpanding(true);
+    await new Promise(r => setTimeout(r, 750));
+    setIsExpanding(false);
+    setSingularity(false);
+
+    // 3. Fetch AI-generated feedback in background
+    try {
+      const content = JSON.stringify({ message_type: 'generate_feedback' });
+      const result = await callWithRetry({
+        phase: stage,
+        message_type: 'generate_feedback',
+        systemPrompt: SWE_MASTER_PROMPT,
+        messages: [...currentHistory, { role: 'user', content }],
+        problemTitle: session?.problem?.title,
+        turnCount: turnCount.current,
+        customProvider: aiProvider,
+        customApiKey: aiApiKey,
+      });
+
+      let parsed = result;
+      if (typeof result === 'string') { try { parsed = JSON.parse(result); } catch (_) {} }
+      if (result.response)           { try { parsed = JSON.parse(result.response); } catch (_) {} }
+
+      setFeedback({
+        dsa:        parsed.dsa        || result.response || 'Feedback unavailable.',
+        projects:   parsed.projects   || '',
+        javascript: parsed.javascript || '',
+        react:      parsed.react      || '',
+        backend:    parsed.backend    || '',
+        behavioral: parsed.behavioral || '',
+      });
+    } catch (e) {
+      console.error('Auto-feedback error:', e);
+      setFeedback({
+        dsa:        'Feedback generation failed. Please try again.',
+        projects:   '', javascript: '', react: '', backend: '', behavioral: '',
+      });
+    } finally {
+      setFbLoading(false);
+    }
+  }, [stage, session, aiProvider, aiApiKey]);
+
+  // Wire the ref so handleSendMessage can always call the latest version
+  completeRef.current = handleInterviewComplete;
 
   // ── render ────────────────────────────────────────────────────────────────
   return (
@@ -296,16 +369,22 @@ export default function App() {
             requirementsSummary={reqSummary}
             phaseBanner={""}
             onBannerDone={() => {}}
+            aiProvider={aiProvider}
+            setAiProvider={setAiProvider}
+            aiApiKey={aiApiKey}
+            setAiApiKey={setAiApiKey}
           />
         )}
       </div>
 
       <FeedbackModal
         isOpen={fbOpen}
+        isLoading={fbLoading}
         feedback={feedback}
         onClose={() => setFbOpen(false)}
         onRestart={() => {
           setFbOpen(false);
+          setFbLoading(false);
           setScreen('landing');
           setSession(null);
           setStage(1);
