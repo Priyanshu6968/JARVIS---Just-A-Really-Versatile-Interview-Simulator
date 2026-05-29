@@ -75,9 +75,7 @@ function isOffTopic(text) {
   const lower = (text || '').toLowerCase().trim();
   if (!lower || lower.length < 2) return false;
   const words = lower.split(/\s+/);
-  const matched = words.filter(w => LLD_KEYWORDS.some(kw => w.includes(kw) || kw.includes(w)));
-  // If less than 15% of words match any LLD keyword, it's off-topic
-  return words.length > 0 && (matched.length / words.length) < 0.15 && lower.length > 3;
+  return words.length > 0 && lower.length > 3;
 }
 
 function pick(arr, seed) {
@@ -85,55 +83,62 @@ function pick(arr, seed) {
 }
 
 const MOCK = {
-  // ── Phase 1 & 2 start greeting ──
+  // ── Stage 1: DSA & Algorithms ──
   startPhase1(title) {
     return {
       proceed_to_next_step: false,
+      stage: 1,
       summary: '',
-      response: `Hello! Welcome to your Low Level Design interview at Flipkart. I'm your interviewer today.\n\nWe'll be designing a **${title}**. It's a great problem that touches on concurrency, database design, and object-oriented design patterns.\n\nLet's start by gathering requirements. Could you please tell me what core features you think this system should support?`
+      response: `Hello! Welcome to your Software Engineering Technical Interview. I'm your interviewer today.\n\nWe'll be conducting this interview across 6 core SWE areas in one go. You have an interactive Excalidraw canvas on the left that you can use at any time as a scratchpad.\n\nLet's start with **Stage 1: DSA & Algorithms**.\n\nCould you write a function to detect if a cycle exists in a singly linked list? Tell me what algorithm you would use, what time and space complexities it has, and any edge cases you'd validate.`
     };
   },
 
-  // ── Phase 1: Gathering Requirements ──
   respondPhase1(userText, turnCount) {
     const txt = (userText || '').toLowerCase();
 
-    // Off-topic input
     if (isOffTopic(txt)) {
       return {
         proceed_to_next_step: false,
+        stage: 1,
         summary: '',
         response: pick(OFFTRACK_RESPONSES, turnCount),
       };
     }
 
-    // User signals readiness to move on
-    const wantsNext = txt.includes('clarif') || txt.includes('next') ||
-      txt.includes('move on') || txt.includes('i think that') || txt.includes("that's all") ||
+    const wantsNext = txt.includes('project') || txt.includes('next') ||
+      txt.includes('move on') || txt.includes("that's all") ||
       txt.includes("that covers") || txt.includes('enough') || txt.includes('done');
 
-    // Auto-transition after 5 substantial turns
-    if (wantsNext || turnCount >= 5) {
+    if (wantsNext || turnCount >= 3) {
       return {
-        proceed_to_next_step: true,
-        summary: 'Requirements gathered: search by city/theatre/date, seat selection, booking, payment processing, booking cancellation with refund, show management.',
-        response: "Great work! You've covered the key requirements well. Let's move to the **Clarifying Requirements** phase.\n\nPlease ask me any clarifying questions you have about the features — constraints, edge cases, scale, etc.",
+        proceed_to_next_step: false,
+        stage: 2,
+        summary: 'DSA completed. Selected Floyds cycle detection with O(N) time and O(1) space constraints.',
+        response: "Excellent work on the DSA section! Let's proceed to **Stage 2: Candidate Projects**.\n\nPlease write or describe the projects you have built in your career. Tell me about their primary technical stacks, architectures, and main engineering objectives.",
       };
     }
 
+    const screeningEncouragements = [
+      "Excellent. Let's definitely support Floyd's Tortoise and Hare approach. How would you handle pointer boundaries to prevent NullPointerExceptions?",
+      "Good thinking — that handles the cycle search. What would be the space-time trade-off if we used a Hash Set instead?",
+      "Yes, that's exactly O(1) auxiliary space. If the linked list structure was read-only, would your logic still hold?",
+    ];
+
     return {
       proceed_to_next_step: false,
+      stage: 1,
       summary: '',
-      response: pick(ENCOURAGE_RESPONSES_P1, turnCount),
+      response: pick(screeningEncouragements, turnCount),
     };
   },
 
-  // ── Phase 2: Clarifying Requirements ──
+  // ── Stage 2: Candidate Projects ──
   startPhase2() {
     return {
       proceed_to_next_step: false,
+      stage: 2,
       summary: '',
-      response: "Now let's clarify the requirements. Please ask me any questions about the features, constraints, or assumptions you'd like to confirm before designing.",
+      response: "Let's move to Stage 2: Candidate Projects. Please write or describe the projects you have built in your career, their technical stacks, and primary architectural goals.",
     };
   },
 
@@ -143,37 +148,45 @@ const MOCK = {
     if (isOffTopic(txt)) {
       return {
         proceed_to_next_step: false,
+        stage: 2,
         summary: '',
         response: pick(OFFTRACK_RESPONSES, turnCount),
       };
     }
 
-    const wantsNext = txt.includes('class') || txt.includes('diagram') || txt.includes('design') ||
-      txt.includes("i'm clear") || txt.includes("i am clear") || txt.includes('clear on') ||
-      txt.includes('no more') || txt.includes('ready') || txt.includes('start design') ||
-      txt.includes('move') || txt.includes('next phase');
-
-    if (wantsNext || turnCount >= 4) {
+    if (turnCount === 0) {
       return {
-        proceed_to_next_step: true,
-        summary: 'Requirements clarified: seat types (recliner/premium/normal), cancellation window 30 min for full refund, concurrent booking via optimistic locking, single active booking per user per show.',
-        response: "Excellent! All requirements are now clear. Let's move to the **Class Diagram** phase.\n\nPlease open the Excalidraw canvas on the left and start drawing your class diagram. Let me know when you're done.",
+        proceed_to_next_step: false,
+        stage: 2,
+        summary: '',
+        response: "That sounds like a highly robust implementation! Let's deep dive: How did you design the microservice boundaries, and how did you guarantee consistent data replication across service lines?",
+      };
+    }
+
+    if (turnCount === 1) {
+      return {
+        proceed_to_next_step: false,
+        stage: 2,
+        summary: '',
+        response: "Excellent. Regarding DB bottlenecks under peak write load: What database choice did you make, what indexing keys did you select, and how did you manage lock contention?",
       };
     }
 
     return {
       proceed_to_next_step: false,
-      summary: '',
-      response: pick(CLARIFY_RESPONSES, turnCount),
+      stage: 3,
+      summary: 'Projects deep-dive completed. Described system stack and answered 2 follow-up architecture questions with solid technical arguments.',
+      response: "Excellent project review! Let's move to **Stage 3: JavaScript & Language Fundamentals**.\n\nCould you explain the difference between microtasks and macrotasks in the JS event loop, and how closures utilize lexical scope?",
     };
   },
 
-  // ── Phase 3: Class Diagram ──
-  startPhase3(reqSummary) {
+  // ── Stage 3: JS Fundamentals ──
+  startPhase3() {
     return {
       proceed_to_next_step: false,
+      stage: 3,
       summary: '',
-      response: "Can you please start creating your class diagram on the screen on the left? Include the key entities, their relationships, and any design patterns you're using. Let me know when you're done.",
+      response: "Let's move to Stage 3: JavaScript & Language Fundamentals. Can you explain the difference between microtasks and macrotasks in the JS event loop, and how closures utilize lexical scope?",
     };
   },
 
@@ -183,43 +196,45 @@ const MOCK = {
     if (isOffTopic(txt)) {
       return {
         proceed_to_next_step: false,
+        stage: 3,
         summary: '',
-        response: "Let's stay focused on the class diagram. What entities have you identified so far?",
+        response: "Let's stay focused on JavaScript language fundamentals. Tell me about closures or scope chains.",
       };
     }
 
-    const probes = [
-      "I can see your diagram taking shape. How are you representing the relationship between **Movie**, **Show**, and **Theatre** in your class structure?",
-      "Good start. Have you considered adding a **BookingManager** class to handle the booking workflow and concurrency?",
-      "Interesting. How does your design handle different **seat types** — recliner, premium, normal? Is that captured in a separate class or an enum?",
-      "I see the core entities. What **design pattern** are you using to manage booking status transitions (pending → confirmed → cancelled)?",
-    ];
+    const wantsNext = txt.includes('react') || txt.includes('frontend') ||
+      txt.includes('next') || txt.includes('move') || turnCount >= 3;
 
-    const wantsDone = txt.includes('done') || txt.includes('finish') ||
-      txt.includes('complete') || txt.includes('schema') || txt.includes('next') ||
-      txt.includes('move') || turnCount >= 4;
-
-    if (wantsDone) {
+    if (wantsNext) {
       return {
-        proceed_to_next_step: true,
-        summary: 'Class diagram completed with entities: Movie, Theatre, Show, Seat, SeatType, Booking, User, Payment, BookingManager. State pattern for booking status.',
-        response: "Thanks! That's all I had on Class Diagram. You can move to **Schema Design** now.\n\nPlease clear or update the canvas for your schema diagram and let me know when you're ready.",
+        proceed_to_next_step: false,
+        stage: 4,
+        summary: 'JS completed. Mapped event loop microtask priorities and closures correctly.',
+        response: "Exceptional language fundamentals! Let's move to **Stage 4: React & Frontend Concepts**.\n\nPlease explain how the Virtual DOM reconciliation algorithm works in React, and how state batching optimizes render cycles.",
       };
     }
+
+    const jsProbes = [
+      "Good explanation of microtasks. In what order would a Promise callback, a setTimeout, and a process.nextTick execute?",
+      "Excellent. How do closures prevent garbage collection of their outer lexical environment, and is that a memory concern?",
+      "That's exactly right. Can you explain how prototypal inheritance works and how it differs from class-based inheritance?",
+    ];
 
     return {
       proceed_to_next_step: false,
+      stage: 3,
       summary: '',
-      response: pick(probes, turnCount),
+      response: pick(jsProbes, turnCount),
     };
   },
 
-  // ── Phase 4: Schema Design ──
+  // ── Stage 4: React & Frontend Concepts ──
   startPhase4() {
     return {
       proceed_to_next_step: false,
+      stage: 4,
       summary: '',
-      response: "Can you please start creating your schema design on the screen on the left? Focus on normalized tables, primary/foreign keys, and indexing strategy. Let me know when you're done.",
+      response: "Please explain how the Virtual DOM reconciliation algorithm works in React, and how state batching optimizes render cycles.",
     };
   },
 
@@ -229,118 +244,146 @@ const MOCK = {
     if (isOffTopic(txt)) {
       return {
         proceed_to_next_step: false,
+        stage: 4,
         summary: '',
-        response: "Let's stay focused on the schema. Which tables have you defined so far?",
+        response: "Let's stay focused on React frontend concepts. What hooks or component lifecycle details are you considering?",
       };
     }
 
-    const probes = [
-      "In which table will you store **city** information, and how does it relate to the **Theatre** table?",
-      "How are you representing the **many-to-many** relationship between Movies and Theatres through Shows?",
-      "What columns would the **show_seats** table have, and how will you prevent concurrent double-booking at the row level?",
-      "Have you considered adding a **composite index** on `(show_id, seat_status)` for fast seat availability queries?",
+    const wantsNext = txt.includes('backend') || txt.includes('db') || txt.includes('next') ||
+      txt.includes('move') || turnCount >= 3;
+
+    if (wantsNext) {
+      return {
+        proceed_to_next_step: false,
+        stage: 5,
+        summary: 'React completed. Outlined fiber reconciliation and automatic state batching.',
+        response: "Incredible frontend depth! Let's proceed to **Stage 5: Backend & Database Design**.\n\nExplain your database indexing strategies (e.g. B-Tree vs Hash index), ACID consistency properties, and how you would design a robust rate-limiter for your REST APIs.",
+      };
+    }
+
+    const reactProbes = [
+      "Excellent. How does React's key prop optimize the reconciliation diffing algorithm under lists?",
+      "Good point. How does the custom hooks lifecycle tie into fiber rendering, and what are the rules of hooks?",
+      "That makes sense. Can you explain the difference between client-side state hooks (useState) and reference hooks (useRef) in terms of component re-renders?",
     ];
+
+    return {
+      proceed_to_next_step: false,
+      stage: 4,
+      summary: '',
+      response: pick(reactProbes, turnCount),
+    };
+  },
+
+  // ── Stage 5: Backend & Database Design ──
+  startPhase5() {
+    return {
+      proceed_to_next_step: false,
+      stage: 5,
+      summary: '',
+      response: "Let's move to Stage 5: Backend & Database Design. Explain database indexing strategies (e.g. B-Tree vs Hash index), ACID consistency properties, and how you would design a robust rate-limiter for your REST APIs.",
+    };
+  },
+
+  respondPhase5(userText, turnCount) {
+    const txt = (userText || '').toLowerCase();
+
+    if (isOffTopic(txt)) {
+      return {
+        proceed_to_next_step: false,
+        stage: 5,
+        summary: '',
+        response: "Let's stay focused on Backend engineering. What API patterns or database structures are you choosing?",
+      };
+    }
+
+    const wantsNext = txt.includes('behavioral') || txt.includes('hr') || txt.includes('next') ||
+      txt.includes('move') || turnCount >= 3;
+
+    if (wantsNext) {
+      return {
+        proceed_to_next_step: false,
+        stage: 6,
+        summary: 'Backend completed. Selected postgres indexing, outlined token-bucket rate limiter schemas.',
+        response: "Outstanding backend review! Let's conclude with **Stage 6: HR & Behavioral / Communication**.\n\nPlease describe your core technical strengths and weaknesses, and why we should hire you for this role.",
+      };
+    }
+
+    const backendProbes = [
+      "That is a robust indexing choice. How do B-Trees optimize range query scans compared to Hash indexes?",
+      "Excellent. How do you implement distributed transactions across separate databases while maintaining ACID boundaries?",
+      "Very good. How would you design a token-bucket or sliding-window rate limiter using Redis to handle API spikes?",
+    ];
+
+    return {
+      proceed_to_next_step: false,
+      stage: 5,
+      summary: '',
+      response: pick(backendProbes, turnCount),
+    };
+  },
+
+  // ── Stage 6: HR & Behavioral ──
+  startPhase6() {
+    return {
+      proceed_to_next_step: false,
+      stage: 6,
+      summary: '',
+      response: "Let's conclude with Stage 6: HR & Behavioral / Communication. Please describe your core technical strengths and weaknesses, and why we should hire you for this role.",
+    };
+  },
+
+  respondPhase6(userText, turnCount) {
+    const txt = (userText || '').toLowerCase();
+
+    if (isOffTopic(txt)) {
+      return {
+        proceed_to_next_step: false,
+        stage: 6,
+        summary: '',
+        response: "Let's stay focused on behavioral and HR questions. Tell me about your team alignment.",
+      };
+    }
 
     const wantsDone = txt.includes('done') || txt.includes('finish') ||
       txt.includes('complete') || txt.includes('that') || txt.includes('all') ||
-      turnCount >= 4;
+      turnCount >= 3;
 
     if (wantsDone) {
       return {
         proceed_to_next_step: true,
-        summary: 'Schema completed with tables: users, movies, theatres, shows, seats, show_seats, bookings, payments. Proper normalization and indexing strategy defined.',
-        response: "Thanks! That's all I had for the interview. I will be sharing your detailed feedback soon. **Best wishes!** 🎉\n\nClick **Get Scorecard** to see your detailed performance review.",
+        stage: 6,
+        summary: 'Behavioral completed. Full interview concluded successfully.',
+        response: "Thank you so much! That is all I had for this Software Engineering interview. I've compiled your consolidated technical and behavioral scorecard. Click **Get Scorecard** to view your detailed evaluations.",
       };
     }
 
+    const hrProbes = [
+      "Excellent reflection. Can you tell me about a highly challenging technical conflict you resolved in a previous project?",
+      "Very mature. How do you negotiate tech debt tradeoffs under extremely strict release deadlines?",
+      "Good alignment. If you had to choose a single core technical value that defines your SWE journey, what would it be?",
+    ];
+
     return {
       proceed_to_next_step: false,
+      stage: 6,
       summary: '',
-      response: pick(probes, turnCount),
+      response: pick(hrProbes, turnCount),
     };
   },
 
   // ── Feedback ──
   feedback(phase) {
     const fb = {
-      1: `## Requirements Gathering & Clarification Feedback
-
-**Overall Rating: Strong (4/5)** ⭐⭐⭐⭐
-
----
-
-### Phase 1 — Gathering Requirements
-
-#### ✅ What Went Well
-- Identified the core user-facing features: search, booking, seat selection, payments
-- Considered operational features like show management
-- Kept scope within the problem boundaries
-
-#### ⚠️ Areas to Improve
-- Could probe earlier about **notification** features (booking confirmation, cancellation alerts)
-- **Scalability constraints** (e.g. peak-time load) worth mentioning in requirements
-- Should clarify assumptions about **guest bookings** vs registered users
-
----
-
-### Phase 2 — Clarifying Requirements
-
-#### ✅ What Went Well
-- Good questions about concurrent booking handling
-- Asked about seat type taxonomy
-
-#### ⚠️ Areas to Improve
-- Could ask about **payment failure** and retry scenarios
-- **Idempotency** of booking requests — what happens on double-tap?
-- Cancellation partial refund tiers (0-30min: full, 30-60min: 50%, etc.)`,
-
-      3: `## Class Diagram Feedback
-
-**Overall Rating: Good (3.5/5)** ⭐⭐⭐½
-
----
-
-### ✅ What Went Well
-- Correct core entities identified: Movie, Theatre, Show, Seat, Booking, User
-- Meaningful associations between entities
-- Payment as a separate entity — good separation of concerns
-
-### ⚠️ Areas to Improve
-- **Missing SeatType** as a separate class or enum — normal/premium/recliner should be explicit
-- **BookingManager** singleton not present — centralizing booking logic is important
-- **State pattern** for Booking status (PENDING → CONFIRMED → CANCELLED) not shown
-- Thread-safety annotations missing — how do you show concurrency handling in the diagram?
-
-### 💡 Recommended Design Patterns
-- **State Pattern** for booking lifecycle
-- **Strategy Pattern** for pricing (peak vs off-peak)
-- **Observer Pattern** for notification triggers`,
-
-      4: `## Schema Design Feedback
-
-**Overall Rating: Good (3.5/5)** ⭐⭐⭐½
-
----
-
-### ✅ What Went Well
-- Clean separation of static (movies, seats) and dynamic (show_seats) data
-- Appropriate foreign key relationships
-- Booking table with status column shows good understanding
-
-### ⚠️ Areas to Improve
-- Missing **composite index** on \`(show_id, seat_status)\` — critical for seat availability queries
-- \`booking_id\` should be an **idempotency key** for safe payment retries
-- Should discuss **row-level locking** on \`show_seats\` to handle concurrency
-- Consider **partitioning** the \`bookings\` table by date for scalability
-
-### 💡 Recommended Indexes
-\`\`\`sql
-CREATE INDEX idx_show_seats ON show_seats(show_id, status);
-CREATE INDEX idx_bookings_user ON bookings(user_id, created_at DESC);
-CREATE UNIQUE INDEX idx_booking_idempotency ON bookings(idempotency_key);
-\`\`\``
+      dsa: `## DSA & Algorithmic Feedback\n\n**Overall Rating: Strong (4.5/5)** ⭐⭐⭐⭐½\n\n---\n\n### Stage 1 — DSA & Algorithms\n\n#### ✅ What Went Well\n- Demonstrated exceptional mastery of core pointer logic and space optimization.\n- Correctly implemented Floyd's Tortoise & Hare cycle detection, minimizing auxiliary space bounds.\n- Handled empty list head checks and boundary conditions smoothly.\n\n#### ⚠️ Areas to Improve\n- Could have discussed structural modification bounds when dealing with multithreaded linked streams.`,
+      projects: `## Project Tech & Nuances Feedback\n\n**Overall Rating: Excellent (4.5/5)** ⭐⭐⭐⭐½\n\n---\n\n### Stage 2 — Candidate Projects\n\n#### ✅ What Went Well\n- Highly technical review of microservice boundary separations and distributed systems constraints.\n- Correctly answered database partition bottleneck probes under peak write load.\n- Excellent discussion of service-to-service communication pathways.\n\n#### ⚠️ Areas to Improve\n- Proactively illustrating service sequence fallback blocks or circuit breakers increases design scores.`,
+      javascript: `## JS & Language Fundamentals Feedback\n\n**Overall Rating: Strong (4/5)** ⭐⭐⭐⭐\n\n---\n\n### Stage 3 — JavaScript & Language Fundamentals\n\n#### ✅ What Went Well\n- Thorough understanding of Event Loop priorities (Promise microtasks vs Timer macrotasks).\n- Correct explanation of closure references and outer lexical environments.\n- Discussed prototypal inheritance structures and key decoupling differences from classical models.\n\n#### ⚠️ Areas to Improve\n- Could explore event delegation event capturing vs bubbling lifecycles more proactively.`,
+      react: `## React & Frontend Concepts Feedback\n\n**Overall Rating: Excellent (4.5/5)** ⭐⭐⭐⭐½\n\n---\n\n### Stage 4 — React & Frontend Concepts\n\n#### ✅ What Went Well\n- Masterful breakdown of fiber Virtual DOM reconciliation diff rules.\n- Understood state batching and paint rendering cycle thresholds.\n- Accurate explanation of custom hooks mounting rules and state hooks side-effects.\n\n#### ⚠️ Areas to Improve\n- Clearly identifying bundle optimization strategies (dynamic lazy-loading imports) increases structural scores.`,
+      backend: `## Backend, Database & API Design Feedback\n\n**Overall Rating: Strong (4/5)** ⭐⭐⭐⭐\n\n---\n\n### Stage 5 — Backend, Database & API Design\n\n#### ✅ What Went Well\n- Selected Postgres for transaction isolation guarantees, and Redis memory caches for read mitigation.\n- Robust Sliding-window rate limiter design using Redis composite memory structures.\n- Accurate distinction between B-Tree indexing ranges and Hash index lookup limits.\n\n#### ⚠️ Areas to Improve\n- Dead-letter queues and transaction rollback strategies should be explicitly mapped out under network partitions.`,
+      behavioral: `## Behavioral & HR Feedback\n\n**Overall Rating: Outstanding (5/5)** ⭐⭐⭐⭐⭐\n\n---\n\n### Stage 6 — HR & Behavioral / Communication\n\n#### ✅ What Went Well\n- Outstanding verbal alignment, ownership, and tech maturity.\n- Proactively discussed resolving architectural team conflict using objective proof-of-concept metrics.\n- High accountability regarding technical strengths and weakness compromises.\n\n#### ⚠️ Areas to Improve\n- Keep practicing concise delivery to business stakeholders when negotiating strict timelines.`
     };
-    return { proceed_to_next_step: false, summary: '', response: fb[phase] || '## Feedback\n\nGood effort overall!' };
+    return { proceed_to_next_step: false, summary: '', response: JSON.stringify(fb) };
   },
 };
 

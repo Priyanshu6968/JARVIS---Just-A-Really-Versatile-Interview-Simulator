@@ -6,10 +6,12 @@ import { speakText, stopSpeaking, createRecognition } from '../utils/voice';
 
 // ─── Phase metadata ───────────────────────────────────────────────────────────
 const PHASE_META = {
-  1: { label: 'Gathering Requirements',  short: 'Requirements',  color: '#60a5fa' },
-  2: { label: 'Clarifying Requirements', short: 'Clarifying',    color: '#818cf8' },
-  3: { label: 'Class Diagram',           short: 'Class Diagram', color: '#a78bfa' },
-  4: { label: 'Schema Design',           short: 'Schema Design', color: '#c084fc' },
+  1: { label: 'DSA & Algorithms',           short: 'DSA',          color: '#60a5fa' },
+  2: { label: 'Candidate Projects',         short: 'Projects',     color: '#818cf8' },
+  3: { label: 'JavaScript Fundamentals',    short: 'JS',           color: '#a78bfa' },
+  4: { label: 'React & Frontend Concepts',  short: 'React',        color: '#c084fc' },
+  5: { label: 'Backend & Database Design',  short: 'Backend',      color: '#f472b6' },
+  6: { label: 'HR & Behavioral',            short: 'HR/Behavioral',color: '#fb7185' },
 };
 
 // ─── Pre-compute 42 frequency-bar configs ────────────────────────────────────
@@ -752,7 +754,7 @@ export default function InterviewScreen({
   isMutedRef.current = isMuted;
 
   const meta      = PHASE_META[phase] || PHASE_META[1];
-  const showCanvas = phase >= 3;
+  const showCanvas = true;
 
   // ── timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -786,7 +788,7 @@ export default function InterviewScreen({
 
   // ── canvas capture ─────────────────────────────────────────────────────────
   const captureCanvas = useCallback(async () => {
-    if (!excalidrawAPI || phase < 3) return null;
+    if (!excalidrawAPI) return null;
     try {
       const elements = excalidrawAPI.getSceneElements();
       if (!elements?.length) return null;
@@ -881,9 +883,9 @@ export default function InterviewScreen({
 
         <div className="w-px h-5 bg-navy-700 shrink-0" />
 
-        {/* Phase stepper */}
+        {/* Progress stepper */}
         <div className="flex items-center gap-0.5 flex-1 overflow-x-auto">
-          {[1, 2, 3, 4].map(i => {
+          {[1, 2, 3, 4, 5, 6].map(i => {
             const done   = phase > i;
             const active = phase === i;
             const m      = PHASE_META[i];
@@ -973,7 +975,7 @@ export default function InterviewScreen({
           {/* Phase badge */}
           <div className="shrink-0 px-4 py-2 border-b border-navy-800 flex items-center gap-2"
             style={{ background: 'rgba(13,17,23,0.6)' }}>
-            <span className="text-xs font-bold" style={{ color: meta.color }}>Phase {phase}</span>
+            <span className="text-xs font-bold" style={{ color: meta.color }}>Stage {phase}</span>
             <span className="text-navy-700">·</span>
             <span className="text-xs text-navy-400">{meta.label}</span>
           </div>
@@ -990,7 +992,7 @@ export default function InterviewScreen({
             {messages.length === 0 && !isLoading && (
               <div className="glass-blue rounded-2xl p-4 text-xs text-navy-300 leading-relaxed fade-up">
                 <p className="font-bold mb-1" style={{ color: meta.color }}>🎯 {session.problem.title}</p>
-                <p>JARVIS will interview you in 4 phases. Respond via voice or text.</p>
+                <p>JARVIS will interview you across 6 core SWE areas in one go. Respond via voice or text.</p>
               </div>
             )}
 
@@ -1177,7 +1179,7 @@ export default function InterviewScreen({
 
             {/* Footer row */}
             <div className="flex justify-between items-center px-0.5">
-              <span className="text-[10px] text-navy-800">Flipkart SDE-2 · LLD Mock</span>
+              <span className="text-[10px] text-navy-800">SWE Technical Interview Simulator</span>
               <button
                 id="feedback-btn"
                 onClick={onGetFeedback}

@@ -5,87 +5,54 @@ import FeedbackModal    from './components/FeedbackModal';
 
 const API = 'http://localhost:5000/api/interview';
 
-// ── system prompts (verbatim from spec) ──────────────────────────────────────
-const PROMPTS = {
-  1: `You are a Low Level Design Interviewer taking a Low Level Design interview at Flipkart for SDE-2 role. A Low Level Design Round typically has following structure:
-    1. Gathering Requirements
-    2. Clarifying Requirements
-    3. Class Diagram
-    4. Schema Design
+const SWE_MASTER_PROMPT = `You are an elite Software Engineering (SWE) Interviewer conducting a rigorous, comprehensive technical interview for a Software Engineer (SDE) position. 
 
-    Your job is to take Part 1 and Part 2 of the interview, i.e., Gathering and Clarifying Requirements. Following is how the interaction between you and user should look like.
+The entire interview takes place in a single continuous conversation ("in one go") through 6 structured stages:
+1. DSA (Data Structures & Algorithms): Ask a relevant DSA/coding problem first. Probe their complexity analysis (Big-O time & space) and boundary constraints.
+2. Candidate Projects: Ask the candidate to write/describe the projects they have built in their career. Once they respond, you must ask exactly 2 to 3 deep technical follow-up questions exploring their project architecture, service boundaries, database choices, or engineering bottlenecks.
+3. JavaScript & Language Fundamentals: Transition to and ask a deep JavaScript or core programming language concept (e.g., closures, event loop execution, prototypes, prototypes inheritance, concurrency models, promises).
+4. React & Frontend Concepts: Transition to and ask about advanced React/frontend engineering (e.g., Virtual DOM reconciliation diffing, state batching, custom hooks lifecycle, rendering performance, client caching).
+5. Backend, Database & API Design: Transition to and ask a backend engineering question (e.g., database schema design, transactions, indexing trade-offs, ACID properties, API design, rate-limiting, system scale).
+6. HR + Behavioral + Communication: Conclude by asking standard HR/behavioral questions (e.g., strengths and weaknesses, why we should hire you, managing technical debt under strict deadlines, resolving team conflicts).
 
-    1. At the start of the interview, you will get Metadata about the question to ask. This will contain problem title, features to must have in the requirements, typical nuances to be mindful of on those features. This will help you reply to candidate appropriately.
-    2. You start by greeting the message and telling them the title of the problem.
-    3. Candidate provides you suggestions of features that should be there in the design. If they directly jump to design or go out of scope of interview, bring them to correct direction.
-    4. If the candidate says something outside the scope of interview, please politely ask them to get back to the agenda.
-    5. When candidate provides feature suggestions, you either say "Sounds good. Let's support this in our design." or "Well. let's keep it out of scope for this interview." Use variations to not sound monotonous.
-    6. When you feel candidate has suggested enough requirements, move them to Clarifying Requirements phase.
-    7. When you feel candidate has spent too much time on gathering requirements (like 10 messages), move them to Clarifying Requirements phase.
-    8. In Clarifying Requirements phase, candidate may ask you clarifying questions on different features.
-    9. If they ask question on something that isn't a feature to be supported, tell them it is Out Of Scope.
-    10. If the candidate says they are clear with requirements, move them to Class Diagram phase.
-    11. When candidate has spent too much time on clarifying requirements (more than 7 messages), move them to Class Diagram phase.
-    12. Never tell the answer to the candidate even if they ask.
-    13. During the interview, never give feedback or the answer to the candidate.
+Evaluation Rules:
+- DO NOT expect exact pre-defined answers. Analyze their logic and communication.
+- ERROR CORRECTION: If the user is completely wrong, correct them politely, explain the correct concept clearly, and then ask a related question.
+- DYNAMIC GUIDANCE: If they are slightly correct or on the right track, do not give away the solution. Instead, ask a guided follow-up question to lead them to the optimal solution.
+- Transitions must feel like a natural conversation. Lead the candidate smoothly between the stages.
+- Never give candidate-level direct final ratings or final marks during the interview conversation.
 
-    Candidate will interact with you in form of a JSON:
-    { message_type: "start"|"learner_response"|"generate_feedback", content: string }
+You must reply ONLY in this JSON format:
+{
+  "proceed_to_next_step": boolean,
+  "stage": number,
+  "summary": string,
+  "response": string
+}
 
-    You must reply only in this JSON format:
-    { proceed_to_next_step: boolean, summary: string, response: string }
+- "stage" is the current active stage number (1: DSA, 2: Projects, 3: JS, 4: React, 5: Backend, 6: HR). Update it dynamically as you guide the candidate.
+- "proceed_to_next_step" is false throughout the interview, and must be set to true ONLY when Stage 6 is fully completed and the interview is concluded.
+- "summary" is a running summary of candidate's technical strengths and gaps for each stage. Keep it empty unless transition occurs or feedback is compiled.
 
-    proceed_to_next_step is true only when moving between phases.
-    summary is empty string unless proceed_to_next_step is true or message_type is generate_feedback.
-    When message_type is generate_feedback, response is detailed markdown feedback.`,
+When message_type is "generate_feedback", you must review the entire conversation history and return a structured markdown feedback JSON representing a compiled review of the 6 stages in the following JSON format:
+{
+  "dsa": "markdown review of DSA stage",
+  "projects": "markdown review of projects stage",
+  "javascript": "markdown review of JS stage",
+  "react": "markdown review of React stage",
+  "backend": "markdown review of backend stage",
+  "behavioral": "markdown review of HR/behavioral stage"
+}
+`;
 
-  2: null, // same as phase 1 (handled below)
-
-  3: `You are a Low Level Design Interviewer taking a Low Level Design interview at Flipkart for SDE-2 role. A Low Level Design Round has 4 parts: Gathering Requirements, Clarifying Requirements, Class Diagram, Schema Design.
-
-    Your job is Part 3: Class Diagram. Candidate has an Excalidraw environment to draw the diagram. You will have access to an image of the Excalidraw canvas at every turn.
-
-    Interview structure:
-    1. Start by saying: "Can you please start creating your class diagram on the screen on left? Let me know when you are done."
-    2. Candidate creates diagram and replies.
-    3. Ask probing questions about the diagram. Eg: "How is your design handling multiple vehicle types?", "I see you have created an Animal class, why?"
-    4. Candidate makes changes and replies.
-    5. When done, close by saying: "Thanks! That's all I had on Class Diagram. You can move to Schema Design now."
-
-    Rules:
-    1. Never give feedback unless message_type is generate_feedback.
-    2. Never give the answer. Give only slight hints and directions.
-    3. Keep responses short and crisp, ideally single sentences.
-    4. Word replies as questions, not statements.
-    5. Ask candidate to draw on diagram tool if needed.
-    6. Ensure candidate creates classes for entities and any design patterns required.
-
-    Candidate sends JSON: { message_type: string, requirements: string, response: string }
-    You reply in JSON: { proceed_to_next_step: boolean, response: string }
-    proceed_to_next_step is true when you close the Class Diagram discussion.
-    When message_type is generate_feedback, response is detailed markdown feedback on class diagram phase.`,
-
-  4: `You are a Low Level Design Interviewer taking a Low Level Design interview at Flipkart for SDE-2 role. A Low Level Design Round has 4 parts: Gathering Requirements, Clarifying Requirements, Class Diagram, Schema Design.
-
-    Your job is Part 4: Schema Design. Evaluate the candidate's ability to create correct schema designs. A correct Schema Design follows best SQL practices like normalization. Candidate has Excalidraw to draw the schema. You will have access to an image of the canvas at every turn. You also know the requirements and class diagram from previous step.
-
-    Interview structure:
-    1. Start by saying: "Can you please start creating your schema design on the screen on left? Let me know when you are done."
-    2. Candidate creates design and replies.
-    3. Ask probing questions. Eg: "In which table will city details be stored?", "How are you representing the relationship between city and buses?"
-    4. Candidate makes changes and replies.
-    5. When done, close by saying: "Thanks! That's all I had for the interview. I will be sharing your detailed feedback soon. Best wishes!"
-
-    Rules: Same as Class Diagram phase — no feedback unless generate_feedback, no answers, short crisp responses, question-style replies.
-
-    Candidate sends JSON: { message_type: string, requirements: string, class_diagram_summary: string, response: string }
-    You reply in JSON: { proceed_to_next_step: boolean, response: string }
-    proceed_to_next_step is true when you close the Schema Design discussion.
-    When message_type is generate_feedback, response is detailed markdown feedback on schema design phase.`,
+const STAGE_NAMES = { 
+  1: 'DSA & Algorithms', 
+  2: 'Candidate Projects', 
+  3: 'JS Fundamentals', 
+  4: 'React & Frontend', 
+  5: 'Backend & API Design', 
+  6: 'HR & Behavioral' 
 };
-PROMPTS[2] = PROMPTS[1]; // same prompt handles both phases 1 & 2
-
-const PHASE_NAMES = { 1:'Gathering Requirements', 2:'Clarifying Requirements', 3:'Class Diagram', 4:'Schema Design' };
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -108,14 +75,8 @@ async function callWithRetry(body) {
 }
 
 // build the user content to send to Claude depending on phase
-function buildUserContent(phase, messageType, text, reqSummary, classSummary) {
-  if (phase <= 2) {
-    return JSON.stringify({ message_type: messageType, content: text });
-  }
-  if (phase === 3) {
-    return JSON.stringify({ message_type: messageType, requirements: reqSummary, response: text });
-  }
-  return JSON.stringify({ message_type: messageType, requirements: reqSummary, class_diagram_summary: classSummary, response: text });
+function buildUserContent(messageType, text) {
+  return JSON.stringify({ message_type: messageType, content: text });
 }
 
 // build messages array to send
@@ -134,15 +95,13 @@ function buildMessages(history, newUserContent, base64Img) {
 export default function App() {
   const [screen,       setScreen]       = useState('landing');
   const [session,      setSession]      = useState(null);   // { name, problem }
-  const [phase,        setPhase]        = useState(1);
+  const [stage,        setStage]        = useState(1);
   const [messages,     setMessages]     = useState([]);     // UI messages: { role, text }
   const [apiHistory,   setApiHistory]   = useState([]);     // raw history for current phase
   const [isLoading,    setIsLoading]    = useState(false);
   const [isSpeaking,   setIsSpeaking]   = useState(false);
   const [reqSummary,   setReqSummary]   = useState('');
-  const [classSummary, setClassSummary] = useState('');
-  const [phaseBanner,  setPhaseBanner]  = useState('');
-  const [feedback,     setFeedback]     = useState({ req:'', class:'', schema:'' });
+  const [feedback,     setFeedback]     = useState({ dsa: '', projects: '', javascript: '', react: '', backend: '', behavioral: '' });
   const [fbOpen,       setFbOpen]       = useState(false);
   const [errorToast,   setErrorToast]   = useState('');
   
@@ -162,12 +121,11 @@ export default function App() {
     setSingularity(true);
 
     // Trigger api call in background to completely hide API latency!
-    setPhase(1);
+    setStage(1);
     setMessages([]);
     setApiHistory([]);
     setIsLoading(true);
     setReqSummary('');
-    setClassSummary('');
     turnCount.current = 0;
 
     const startContent = JSON.stringify({
@@ -180,18 +138,19 @@ export default function App() {
     const apiPromise = callWithRetry({
       phase: 1,
       message_type: 'start',
-      systemPrompt: PROMPTS[1],
+      systemPrompt: SWE_MASTER_PROMPT,
       messages: [firstMsg],
       problemTitle: problem.title,
       turnCount: 0,
     }).then(result => {
-      const text = result.response || `Hello! Let's begin the LLD interview for ${problem.title}.`;
+      const text = result.response || `Hello! Let's begin the technical interview for ${problem.title}.`;
       setMessages([{ role: 'assistant', text }]);
       setApiHistory([firstMsg, { role: 'assistant', content: JSON.stringify(result) }]);
+      if (result.stage) setStage(result.stage);
     }).catch(e => {
       console.error('Start error:', e);
       toast('Connection issue, retrying...');
-      const fallback = `Hello ${name}! Welcome to your LLD interview. Today we'll design a ${problem.title}. Please tell me the core features you'd like to include.`;
+      const fallback = `Hello ${name}! Welcome to your Software Engineering Technical Interview. Let's start with Stage 1: DSA. Let's write a function to find a cycle in a data stream. Tell me what data structure you would use first.`;
       setMessages([{ role: 'assistant', text: fallback }]);
     }).finally(() => {
       setIsLoading(false);
@@ -219,14 +178,14 @@ export default function App() {
     setIsLoading(true);
     turnCount.current += 1;
 
-    const userContent = buildUserContent(phase, 'learner_response', text, reqSummary, classSummary);
+    const userContent = buildUserContent('learner_response', text);
     const msgs = buildMessages(apiHistory, userContent, base64Img);
 
     try {
       const result = await callWithRetry({
-        phase,
+        phase: stage,
         message_type: 'learner_response',
-        systemPrompt: PROMPTS[phase],
+        systemPrompt: SWE_MASTER_PROMPT,
         messages: msgs,
         problemTitle: session?.problem?.title,
         turnCount: turnCount.current,
@@ -235,48 +194,16 @@ export default function App() {
       const assistantText = result.response || '';
       setMessages(prev => [...prev, { role: 'assistant', text: assistantText }]);
 
-      // update summaries
       if (result.summary) {
-        if (phase <= 2) setReqSummary(result.summary);
-        else if (phase === 3) setClassSummary(result.summary);
+        setReqSummary(prev => prev + '\n' + result.summary);
       }
 
-      // update history
+      if (result.stage && result.stage !== stage) {
+        setStage(result.stage);
+      }
+
       const newHistory = [...msgs, { role: 'assistant', content: JSON.stringify(result) }];
       setApiHistory(newHistory);
-
-      // ── phase transition ──────────────────────────────────────────────
-      if (result.proceed_to_next_step && phase < 4) {
-        const next = phase + 1;
-        setPhaseBanner(`Moving to ${PHASE_NAMES[next]}…`);
-
-        // brief pause for banner
-        await new Promise(r => setTimeout(r, 2600));
-
-        setPhase(next);
-        setApiHistory([]);
-        turnCount.current = 0;
-
-        // kick off next phase greeting
-        const startContent = buildUserContent(next, 'start',
-          next === 3 ? result.summary || reqSummary : next === 4 ? classSummary : '',
-          result.summary || reqSummary, classSummary);
-
-        const startMsg = { role: 'user', content: startContent };
-
-        const startResult = await callWithRetry({
-          phase: next,
-          message_type: 'start',
-          systemPrompt: PROMPTS[next],
-          messages: [startMsg],
-          problemTitle: session?.problem?.title,
-          turnCount: 0,
-        });
-
-        const greeting = startResult.response || 'Let\'s proceed to the next phase.';
-        setMessages(prev => [...prev, { role: 'assistant', text: greeting }]);
-        setApiHistory([startMsg, { role: 'assistant', content: JSON.stringify(startResult) }]);
-      }
 
     } catch (e) {
       console.error('Send error:', e);
@@ -288,37 +215,54 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, phase, apiHistory, reqSummary, classSummary, session]);
+  }, [isLoading, stage, apiHistory, session]);
 
   // ── get feedback ─────────────────────────────────────────────────────────
   const handleGetFeedback = useCallback(async () => {
     setFbOpen(true);
     setIsLoading(true);
 
-    const fetchFeedback = async (p, extraFields = {}) => {
-      try {
-        const content = JSON.stringify({ message_type: 'generate_feedback', ...extraFields });
-        const r = await callWithRetry({
-          phase: p,
-          message_type: 'generate_feedback',
-          systemPrompt: PROMPTS[p],
-          messages: [{ role: 'user', content }],
-          problemTitle: session?.problem?.title,
-          turnCount: 0,
-        });
-        return r.response || '';
-      } catch { return 'Feedback unavailable.'; }
-    };
+    try {
+      const content = JSON.stringify({ message_type: 'generate_feedback' });
+      const result = await callWithRetry({
+        phase: stage,
+        message_type: 'generate_feedback',
+        systemPrompt: SWE_MASTER_PROMPT,
+        messages: [...apiHistory, { role: 'user', content }],
+        problemTitle: session?.problem?.title,
+        turnCount: turnCount.current,
+      });
 
-    const [reqFb, classFb, schemaFb] = await Promise.all([
-      fetchFeedback(1, { content: '' }),
-      phase >= 3 ? fetchFeedback(3, { requirements: reqSummary, response: '' }) : Promise.resolve('Complete Phase 3 to unlock feedback.'),
-      phase >= 4 ? fetchFeedback(4, { requirements: reqSummary, class_diagram_summary: classSummary, response: '' }) : Promise.resolve('Complete Phase 4 to unlock feedback.'),
-    ]);
+      let parsed = result;
+      if (typeof result === 'string') {
+        try { parsed = JSON.parse(result); } catch (_) {}
+      }
+      if (result.response) {
+        try { parsed = JSON.parse(result.response); } catch (_) {}
+      }
 
-    setFeedback({ req: reqFb, class: classFb, schema: schemaFb });
-    setIsLoading(false);
-  }, [phase, reqSummary, classSummary, session]);
+      setFeedback({
+        dsa: parsed.dsa || result.response || 'Feedback unavailable.',
+        projects: parsed.projects || '',
+        javascript: parsed.javascript || '',
+        react: parsed.react || '',
+        backend: parsed.backend || '',
+        behavioral: parsed.behavioral || '',
+      });
+    } catch (e) {
+      console.error('Feedback fetch error:', e);
+      setFeedback({
+        dsa: 'Feedback generation failed. Please try again.',
+        projects: '',
+        javascript: '',
+        react: '',
+        backend: '',
+        behavioral: '',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [stage, apiHistory, session]);
 
   // ── render ────────────────────────────────────────────────────────────────
   return (
@@ -342,7 +286,7 @@ export default function App() {
         ) : (
           <InterviewScreen
             session={session}
-            phase={phase}
+            phase={stage}
             messages={messages}
             isLoading={isLoading}
             isSpeaking={isSpeaking}
@@ -350,8 +294,8 @@ export default function App() {
             onSendMessage={handleSendMessage}
             onGetFeedback={handleGetFeedback}
             requirementsSummary={reqSummary}
-            phaseBanner={phaseBanner}
-            onBannerDone={() => setPhaseBanner('')}
+            phaseBanner={""}
+            onBannerDone={() => {}}
           />
         )}
       </div>
@@ -364,11 +308,11 @@ export default function App() {
           setFbOpen(false);
           setScreen('landing');
           setSession(null);
-          setPhase(1);
+          setStage(1);
           setMessages([]);
           setApiHistory([]);
           setReqSummary('');
-          setClassSummary('');
+          setFeedback({ dsa: '', projects: '', javascript: '', react: '', backend: '', behavioral: '' });
         }}
       />
     </div>

@@ -1,26 +1,40 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
-const PROBLEMS = [
+const FOCUS_AREAS = [
   {
-    id: 'movie',
-    title: 'Movie Booking Application',
-    icon: '🎬',
-    desc: 'BookMyShow-style concurrent seat reservation, payment & cancellations',
-    nuances: ['Seats can be of multiple types (recliner, normal, premium)','A movie can run in multiple theatres','Cancellation window matters for refund eligibility'],
+    id: 'dsa',
+    title: 'DSA & Algorithms',
+    icon: '🧠',
+    desc: 'Data Structures, algorithms, complexity bounds (Big O), and space-time trade-offs',
+    nuances: ['Optimized time and space complexity','Corner cases and boundary constraints','Optimal data structures (Trees, Graphs, DP)'],
   },
   {
-    id: 'parking',
-    title: 'Parking Lot System',
-    icon: '🅿️',
-    desc: 'Automated multi-level parking with ticketing and dynamic billing',
-    nuances: ['Multiple vehicle types','Concurrent spot allocation','Peak-hour dynamic pricing'],
+    id: 'system',
+    title: 'System Architecture (HLD/LLD)',
+    icon: '🏛️',
+    desc: 'High Level Design, Microservices, database systems, caching, scaling, and class inheritance structures',
+    nuances: ['High availability and fault tolerance','Consistency, partitioning, and replication trade-offs','Object-Oriented Design patterns and interface clean boundaries'],
   },
   {
-    id: 'splitwise',
-    title: 'Splitwise Expense Manager',
-    icon: '💸',
-    desc: 'Group ledger with multi-split modes and debt simplification',
-    nuances: ['Debt simplification (min transactions)','Currency conversions','Full audit log'],
+    id: 'backend',
+    title: 'Backend & Databases',
+    icon: '⚙️',
+    desc: 'Database schemas, transactions, concurrency, multi-threading, locking, and API engineering',
+    nuances: ['Concurrent locking and race condition mitigation','Database normalization and indexing patterns','API design, rate limiting, and network protocols'],
+  },
+  {
+    id: 'frontend',
+    title: 'Frontend & Client Systems',
+    icon: '🌐',
+    desc: 'UI architecture, global state management, render optimization, client security, and browser systems',
+    nuances: ['Render cycles and frame rate optimization','Global vs local state boundaries','Client security (XSS, CSRF) and performance metrics'],
+  },
+  {
+    id: 'behavioral',
+    title: 'Behavioral & Tech Leadership',
+    icon: '💬',
+    desc: 'Technical project ownership, handling structural design failures, technical team conflict resolution, and growth',
+    nuances: ['Ownership and leadership in past design loops','Handling tech debt and architectural failures','Engineering compromises and team conflict resolution'],
   },
 ];
 
@@ -28,9 +42,9 @@ const BENEFITS = [
   {
     id: 'velocity',
     icon: '⚡',
-    title: 'Accelerate LLD Velocity',
+    title: 'Accelerate Technical Skill',
     tagline: 'WEEKS TO DAYS',
-    desc: 'Compress architectural study loops with immediate LLD evaluations. Run unlimited mock sessions on enterprise booking, parking, and expense group models.',
+    desc: 'Compress technical study loops with immediate SWE evaluations. Run unlimited mock sessions on algorithms, systems scaling, and structural patterns.',
     side: 'left',
   },
   {
@@ -38,15 +52,15 @@ const BENEFITS = [
     icon: '🧠',
     title: 'Objective AI Assessment',
     tagline: '100% BIAS-FREE',
-    desc: 'Grade architectural decisions solely on technical trade-offs, design patterns, and edge-case handling. Standardized and purely objective feedback.',
+    desc: 'Grade architectural and engineering decisions solely on technical trade-offs, standard patterns, and edge-case handling. Standardized and objective feedback.',
     side: 'left',
   },
   {
     id: 'sandbox',
     icon: '✏️',
-    title: 'Interactive Sandbox',
+    title: 'Interactive Whiteboard',
     tagline: 'VISUAL SYSTEM DIAGRAMS',
-    desc: 'Model classes, relate databases, and draft structural design patterns dynamically on our fully integrated Excalidraw design canvas.',
+    desc: 'Model classes, draft structural design pattern interfaces, or sketch full microservice systems on our fully integrated Excalidraw design canvas.',
     side: 'right',
   },
   {
@@ -266,7 +280,8 @@ function EyeOverlay({ mousePos, imgRef }) {
 // ─── Main Landing Screen ──────────────────────────────────────────────────────
 export default function LandingScreen({ onStart }) {
   const [name,  setName]  = useState('');
-  const [prob,  setProb]  = useState(PROBLEMS[0]);
+  const [role,  setRole]  = useState('Software Engineer (SDE-2)');
+  const [prob,  setProb]  = useState(FOCUS_AREAS[0]);
   const [hover, setHover] = useState(false);
   const imgRef    = useRef(null);
   const robotWrapperRef = useRef(null);
@@ -306,6 +321,14 @@ export default function LandingScreen({ onStart }) {
           className="h-8 w-auto object-contain"
           style={{ filter: 'drop-shadow(0 0 10px rgba(34,211,238,0.3))' }}
         />
+      </div>
+
+      {/* Floating title line in top center HUD */}
+      <div className="absolute top-7 left-1/2 -translate-x-1/2 z-30 pointer-events-none hidden md:block">
+        <span className="text-cyan-400/90 font-medium text-sm tracking-[0.22em] uppercase select-none"
+              style={{ textShadow: '0 0 16px rgba(34,211,238,0.4)' }}>
+          Practice for your next SWE interview
+        </span>
       </div>
 
       {/* Eye tracking overlay — fixed over robot image */}
@@ -398,6 +421,14 @@ export default function LandingScreen({ onStart }) {
         {/* ── SECTION 1: Robot hero (Compacted spacer & framing cards) ── */}
         <div className="w-full flex flex-col items-center justify-between pt-6" style={{ height: '76vh', minHeight: '76vh', position: 'relative' }}>
 
+          {/* Centered SWE Interview Headline at the top of hero spacer for mobile */}
+          <div className="absolute top-8 left-1/2 -translate-x-1/2 z-20 text-center w-full px-4 md:hidden">
+            <h1 className="text-cyan-400 font-medium text-xs tracking-[0.16em] uppercase select-none opacity-85"
+                style={{ textShadow: '0 0 12px rgba(34,211,238,0.35)' }}>
+              Practice for your next SWE interview
+            </h1>
+          </div>
+
           {/* Empty spacing box matching the fixed backdrop dimensions */}
           <div className="relative flex items-center justify-center w-full" style={{ height: '60vh', maxHeight: '60vh' }}>
             
@@ -457,21 +488,26 @@ export default function LandingScreen({ onStart }) {
               </span>
               Candidate Profile
             </h2>
-            <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: '#2a6878' }}>Your Name</label>
-            <input
-              id="candidate-name"
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && canStart && onStart({ name: name.trim(), problem: prob })}
-              placeholder="e.g. Priya Sharma"
-              className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
-              style={{ background: 'rgba(1,8,18,0.95)', border: '1px solid rgba(34,211,238,0.18)', color: '#e0f9ff', caretColor: '#22d3ee' }}
-              onFocus={e => e.target.style.borderColor = 'rgba(34,211,238,0.65)'}
-              onBlur={e  => e.target.style.borderColor = 'rgba(34,211,238,0.18)'}
-            />
+            
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: '#2a6878' }}>Your Name</label>
+                <input
+                  id="candidate-name"
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="e.g. Priya Sharma"
+                  className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
+                  style={{ background: 'rgba(1,8,18,0.95)', border: '1px solid rgba(34,211,238,0.18)', color: '#e0f9ff', caretColor: '#22d3ee' }}
+                  onFocus={e => e.target.style.borderColor = 'rgba(34,211,238,0.65)'}
+                  onBlur={e  => e.target.style.borderColor = 'rgba(34,211,238,0.18)'}
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-2 mt-4 pt-3 text-xs border-t" style={{ borderColor: 'rgba(34,211,238,0.08)', color: '#2a6878' }}>
-              {['4-phase LLD interview','Excalidraw canvas','Voice-enabled AI','Detailed scorecard'].map(f => (
+              {['Comprehensive SWE Mock','Excalidraw whiteboard','Voice-enabled AI','Detailed scorecard'].map(f => (
                 <div key={f} className="flex items-center gap-1.5">
                   <span style={{ color: '#22d3ee' }}>✦</span> {f}
                 </div>
@@ -479,57 +515,26 @@ export default function LandingScreen({ onStart }) {
             </div>
           </div>
 
-          {/* Problem selection */}
-          <div className="rounded-2xl p-5 border" style={{
-            background: 'rgba(4,14,26,0.92)',
-            backdropFilter: 'blur(20px)',
-            borderColor: 'rgba(34,211,238,0.18)',
-            boxShadow: '0 0 40px rgba(34,211,238,0.04), inset 0 1px 0 rgba(255,255,255,0.03)',
-          }}>
-            <h2 className="text-white font-bold text-sm flex items-center gap-2 mb-4">
-              <span className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-                style={{ background: 'rgba(34,211,238,0.12)', border: '1px solid rgba(34,211,238,0.28)', color: '#22d3ee' }}>
-                📋
-              </span>
-              Select LLD Problem
-            </h2>
-            <div className="flex flex-col gap-2.5">
-              {PROBLEMS.map(p => {
-                const sel = prob.id === p.id;
-                return (
-                  <button key={p.id} id={`problem-${p.id}`} onClick={() => setProb(p)}
-                    className="text-left rounded-xl border transition-all"
-                    style={{
-                      padding: '12px 14px',
-                      background: sel ? 'rgba(34,211,238,0.08)' : 'rgba(1,8,18,0.7)',
-                      borderColor: sel ? 'rgba(34,211,238,0.5)' : 'rgba(34,211,238,0.1)',
-                      boxShadow: sel ? '0 0 18px rgba(34,211,238,0.1)' : 'none',
-                    }}>
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="font-bold text-sm flex items-center gap-2" style={{ color: sel ? '#e0f9ff' : '#4a8a9a' }}>
-                        <span>{p.icon}</span> {p.title}
-                      </span>
-                      {sel && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,211,238,0.18)', color: '#22d3ee' }}>Selected</span>}
-                    </div>
-                    <p className="text-xs" style={{ color: '#254555' }}>{p.desc}</p>
-                    {sel && (
-                      <div className="border-t mt-2 pt-2" style={{ borderColor: 'rgba(34,211,238,0.12)' }}>
-                        <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'rgba(34,211,238,0.45)' }}>JARVIS will probe on:</p>
-                        <ul className="list-disc pl-4 flex flex-col gap-0.5">
-                          {p.nuances.map((n, i) => <li key={i} className="text-[11px]" style={{ color: '#6dd0e0' }}>{n}</li>)}
-                        </ul>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* CTA */}
           <button
             id="start-interview-btn"
-            onClick={() => onStart({ name: name.trim(), problem: prob })}
+            onClick={() => onStart({
+              name: name.trim(),
+              problem: {
+                title: "Software Engineering Technical Interview",
+                features: [
+                  `Candidate Name: ${name.trim()}`,
+                  "Round: Comprehensive SDE Mock Loop",
+                  "Areas Evaluated: Technical Screening, System Architecture, Whiteboard Design, Behavioral Leadership"
+                ],
+                nuances: [
+                  "Time & Space complexity bounds (Big-O)",
+                  "Microservice scaling, caching, and DB boundaries",
+                  "Whiteboard pattern extensibility (Strategy/Factory/Observer)",
+                  "Conflict resolution and architectural trade-offs"
+                ]
+              }
+            })}
             disabled={!canStart}
             onMouseEnter={() => setHover(true)}
             onMouseLeave={() => setHover(false)}
@@ -541,17 +546,17 @@ export default function LandingScreen({ onStart }) {
               border: `1px solid ${canStart ? 'rgba(34,211,238,0.45)' : 'rgba(34,211,238,0.07)'}`,
               cursor: canStart ? 'pointer' : 'not-allowed',
             }}>
-            <span>Begin LLD Interview with JARVIS</span>
+            <span>Begin SWE Interview with JARVIS</span>
             <span style={{ display:'inline-block', transition:'transform 0.2s', transform: hover && canStart ? 'translateX(5px)' : 'translateX(0)', fontSize:'1.2em' }}>→</span>
           </button>
         </div>
 
-        {/* ── SECTION 3: Decoding the LLD Interviewer's Mind ── */}
+        {/* ── SECTION 3: Decoding the SWE Interviewer's Mind ── */}
         <div className="w-full max-w-5xl px-5 py-16 flex flex-col items-center gap-12 border-t" style={{ borderColor: 'rgba(34,211,238,0.08)' }}>
           
           <div className="text-center flex flex-col gap-2 max-w-2xl">
             <span className="text-xs font-black tracking-[0.25em] text-cyan-400 uppercase">THE COGNITIVE LOOP</span>
-            <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">Decoding the LLD Interviewer's Mind</h2>
+            <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">Decoding the SWE Interviewer's Mind</h2>
             <p className="text-sm" style={{ color: '#64808c' }}>
               Real-world interviewers don't just look for code that works. They evaluate how you communicate, how you navigate ambiguity, and how you design under constraint.
             </p>
@@ -560,28 +565,28 @@ export default function LandingScreen({ onStart }) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
             {[
               {
-                icon: '📋',
-                title: 'Constraint Clarification',
-                tagline: 'PHASE 1 & 2',
-                desc: 'Interviewers look for candidates who pause and ask clarifying questions first. Rushing to code without establishing scale, boundaries, or vehicle assumptions is the number one failure pattern.'
+                icon: '🧠',
+                title: 'Algorithm & Complexity',
+                tagline: 'PHASE 1 SCREENING',
+                desc: 'Interviewers look for strong problem solving and complexity bounds (Big-O). Correct data structure choices and edge-case validation prevent runtime failures.'
               },
               {
-                icon: '🧠',
-                title: 'Trade-Off Mastery',
-                tagline: 'ARCHITECTURAL DEPTH',
-                desc: 'There is no single "perfect" solution. Interviewers test your engineering maturity by asking you to defend extensibility vs over-engineering, read vs write performance, or SQL vs NoSQL layouts.'
+                icon: '🏛️',
+                title: 'System Scale & Design',
+                tagline: 'PHASE 2 ARCHITECTURE',
+                desc: 'Scaling to millions requires microservices boundaries, database choices (SQL vs NoSQL), robust caching strategies, and failover designs.'
               },
               {
                 icon: '✏️',
-                title: 'Visual Clarity (UML)',
-                tagline: 'PHASE 3',
-                desc: 'A class diagram is a team communication tool. You are judged on your ability to establish clean relationship interfaces, demonstrating clear aggregation, composition, and logical dependency boundaries.'
+                title: 'Whiteboard & Patterns',
+                tagline: 'PHASE 3 WHITEBOARD',
+                desc: 'Your visual sketch is a collaborative team tool. Demonstrate clean pattern interfaces, logical aggregations, and object-oriented extensibility.'
               },
               {
-                icon: '💾',
-                title: 'Database Schema Modeling',
-                tagline: 'PHASE 4',
-                desc: 'Interviewers evaluate your awareness of the storage layer. They analyze if you choose database structures, primary keys, and concurrent transaction locks that scale correctly under write-heavy loads.'
+                icon: '💬',
+                title: 'Leadership & Conflict',
+                tagline: 'PHASE 4 BEHAVIORAL',
+                desc: 'Mature engineers are tested on ownership under ambiguity, conflict resolution over tech debt, post-mortem recovery, and business trade-offs.'
               }
             ].map((insight, idx) => (
               <div key={idx} className="rounded-2xl p-5 border transition-all duration-300 hover:scale-[1.02] flex flex-col gap-3 group"
@@ -673,7 +678,7 @@ export default function LandingScreen({ onStart }) {
         {/* ── SECTION 5: Immersive "Ready to Rehearse?" CTA Block ── */}
         <div className="w-full max-w-xl px-5 pb-12 pt-8 flex flex-col items-center gap-6 text-center border-t" style={{ borderColor: 'rgba(34,211,238,0.08)' }}>
           <div className="flex flex-col gap-2">
-            <h3 className="text-xl font-black text-white tracking-tight">Ready to challenge your LLD limits?</h3>
+            <h3 className="text-xl font-black text-white tracking-tight">Ready to challenge your SWE limits?</h3>
             <p className="text-xs" style={{ color: '#64808c' }}>
               No accounts, no payment, and no claims. Set up your candidate profile above and start coding with JARVIS immediately.
             </p>
@@ -721,7 +726,7 @@ export default function LandingScreen({ onStart }) {
               </div>
               
               <p className="text-xs leading-relaxed max-w-lg" style={{ color: '#526b78' }}>
-                JARVIS is an agentic talent evaluation simulator that gives every software developer and tech recruiter the capability to practice, refine, and master low-level system designs. Our AI-native evaluation system probes requirements, gauges trade-offs, and validates visual schema configurations with objective, real-time rigor and instant scorecard feedback.
+                JARVIS is an agentic talent evaluation simulator that gives every software developer and tech recruiter the capability to practice, refine, and master comprehensive SWE technical interview rounds. Our AI-native evaluation system probes requirements, gauges scaling trade-offs, and validates visual whiteboard schemas with objective, real-time rigor and instant scorecard feedback.
               </p>
               
               <span className="text-xs font-semibold italic tracking-wide" style={{ color: '#22d3ee' }}>
@@ -814,7 +819,7 @@ export default function LandingScreen({ onStart }) {
         style={{ background: 'rgba(1,6,14,0.88)', borderTop: '1px solid rgba(34,211,238,0.1)', color: '#1a4050', backdropFilter: 'blur(10px)' }}>
         <div className="flex items-center gap-2">
           <img src="/jarvis_logo.png" alt="JARVIS Logo" className="h-3.5 w-auto object-contain opacity-55" />
-          <span className="text-[9px] tracking-wide" style={{ color: '#2a5a6a' }}>v2.0 · LLD Interview Simulator</span>
+          <span className="text-[9px] tracking-wide" style={{ color: '#2a5a6a' }}>v2.0 · SWE Interview Simulator</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
