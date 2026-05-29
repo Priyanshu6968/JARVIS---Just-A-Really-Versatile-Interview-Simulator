@@ -114,3 +114,83 @@ html, body, #root {
   50%     { opacity: 0.35; }
 }
 .flat-shimmer { animation: flatShimmer 3s ease-in-out infinite; }
+
+/* ── Retro TV Screen Off/On animations ──────────────────────────────────── */
+@keyframes tvOff {
+  0% {
+    transform: scale(1, 1);
+    filter: brightness(1) contrast(1);
+    opacity: 1;
+  }
+  35% {
+    transform: scale(1, 0.005);
+    filter: brightness(2) contrast(1.5) saturate(1.8);
+    background: #fff;
+    opacity: 1;
+  }
+  70% {
+    transform: scale(0.005, 0.005);
+    opacity: 1;
+    filter: brightness(8);
+  }
+  100% {
+    transform: scale(0, 0);
+    opacity: 0;
+    filter: brightness(15);
+  }
+}
+
+@keyframes tvOn {
+  0% {
+    transform: scale(0, 0);
+    opacity: 0;
+    filter: brightness(15);
+  }
+  30% {
+    transform: scale(0.005, 0.005);
+    opacity: 1;
+    filter: brightness(8);
+  }
+  65% {
+    transform: scale(1, 0.005);
+    filter: brightness(2) contrast(1.5) saturate(1.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1, 1);
+    filter: brightness(1) contrast(1);
+    opacity: 1;
+  }
+}
+
+@keyframes singularityFade {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  25% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  75% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+}
+
+.animate-tv-off {
+  animation: tvOff 0.75s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  transform-origin: center center;
+}
+
+.animate-tv-on {
+  animation: tvOn 0.75s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  transform-origin: center center;
+}
+
+.tv-singularity {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  background-color: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 15px 4px #22d3ee, 0 0 30px 8px #fff;
+  z-index: 1000;
+  pointer-events: none;
+  animation: singularityFade 1.5s ease-in-out forwards;
+}

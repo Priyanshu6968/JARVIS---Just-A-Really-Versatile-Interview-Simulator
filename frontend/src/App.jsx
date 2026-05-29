@@ -145,6 +145,12 @@ export default function App() {
   const [feedback,     setFeedback]     = useState({ req:'', class:'', schema:'' });
   const [fbOpen,       setFbOpen]       = useState(false);
   const [errorToast,   setErrorToast]   = useState('');
+  
+  // Immersive transition states
+  const [isCollapsing, setIsCollapsing] = useState(false);
+  const [isExpanding,  setIsExpanding]  = useState(false);
+  const [singularity,  setSingularity]  = useState(false);
+  
   const turnCount = useRef(0);
 
   const toast = msg => { setErrorToast(msg); setTimeout(() => setErrorToast(''), 3500); };
@@ -152,7 +158,10 @@ export default function App() {
   // ── start interview ──────────────────────────────────────────────────────
   const handleStart = useCallback(async ({ name, problem }) => {
     setSession({ name, problem });
-    setScreen('interview');
+    setIsCollapsing(true);
+    setSingularity(true);
+
+    // Trigger api call in background to completely hide API latency!
     setPhase(1);
     setMessages([]);
     setApiHistory([]);
@@ -168,27 +177,38 @@ export default function App() {
 
     const firstMsg = { role: 'user', content: startContent };
 
-    try {
-      const result = await callWithRetry({
-        phase: 1,
-        message_type: 'start',
-        systemPrompt: PROMPTS[1],
-        messages: [firstMsg],
-        problemTitle: problem.title,
-        turnCount: 0,
-      });
-
+    const apiPromise = callWithRetry({
+      phase: 1,
+      message_type: 'start',
+      systemPrompt: PROMPTS[1],
+      messages: [firstMsg],
+      problemTitle: problem.title,
+      turnCount: 0,
+    }).then(result => {
       const text = result.response || `Hello! Let's begin the LLD interview for ${problem.title}.`;
       setMessages([{ role: 'assistant', text }]);
       setApiHistory([firstMsg, { role: 'assistant', content: JSON.stringify(result) }]);
-    } catch (e) {
+    }).catch(e => {
       console.error('Start error:', e);
       toast('Connection issue, retrying...');
       const fallback = `Hello ${name}! Welcome to your LLD interview. Today we'll design a ${problem.title}. Please tell me the core features you'd like to include.`;
       setMessages([{ role: 'assistant', text: fallback }]);
-    } finally {
+    }).finally(() => {
       setIsLoading(false);
-    }
+    });
+
+    // Wait 750ms for TV-off collapse animation to finish
+    await new Promise(r => setTimeout(r, 750));
+
+    // Switch screen inside DOM
+    setScreen('interview');
+    setIsCollapsing(false);
+    setIsExpanding(true);
+
+    // Wait another 750ms for TV-on expand animation to finish
+    await new Promise(r => setTimeout(r, 750));
+    setIsExpanding(false);
+    setSingularity(false);
   }, []);
 
   // ── send message ────────────────────────────────────────────────────────
@@ -311,23 +331,30 @@ export default function App() {
         </div>
       )}
 
-      {screen === 'landing' ? (
-        <LandingScreen onStart={handleStart} />
-      ) : (
-        <InterviewScreen
-          session={session}
-          phase={phase}
-          messages={messages}
-          isLoading={isLoading}
-          isSpeaking={isSpeaking}
-          setIsSpeaking={setIsSpeaking}
-          onSendMessage={handleSendMessage}
-          onGetFeedback={handleGetFeedback}
-          requirementsSummary={reqSummary}
-          phaseBanner={phaseBanner}
-          onBannerDone={() => setPhaseBanner('')}
-        />
+      {/* Singularity glow center dot overlay */}
+      {singularity && (
+        <div className="tv-singularity" />
       )}
+
+      <div className={`h-full w-full ${isCollapsing ? 'animate-tv-off' : isExpanding ? 'animate-tv-on' : ''}`}>
+        {screen === 'landing' ? (
+          <LandingScreen onStart={handleStart} />
+        ) : (
+          <InterviewScreen
+            session={session}
+            phase={phase}
+            messages={messages}
+            isLoading={isLoading}
+            isSpeaking={isSpeaking}
+            setIsSpeaking={setIsSpeaking}
+            onSendMessage={handleSendMessage}
+            onGetFeedback={handleGetFeedback}
+            requirementsSummary={reqSummary}
+            phaseBanner={phaseBanner}
+            onBannerDone={() => setPhaseBanner('')}
+          />
+        )}
+      </div>
 
       <FeedbackModal
         isOpen={fbOpen}
