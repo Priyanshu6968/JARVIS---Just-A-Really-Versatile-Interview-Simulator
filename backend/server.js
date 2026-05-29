@@ -613,7 +613,7 @@ async function callGroq(systemPrompt, messages, apiKey) {
 }
 
 // ─── Main route ────────────────────────────────────────────────────────────────
-app.post('/api/interview', async (req, res) => {
+app.post(['/api/interview', '/interview'], async (req, res) => {
   const { phase, systemPrompt, messages, message_type, problemTitle, turnCount, customProvider, customApiKey } = req.body;
 
   let provider = customProvider || 'anthropic';
@@ -681,7 +681,7 @@ app.post('/api/interview', async (req, res) => {
   }
 });
 
-app.get('/api/health', (_, res) => {
+app.get(['/api/health', '/health'], (_, res) => {
   const apiKey = process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY;
   const mock = !apiKey || apiKey === 'your_anthropic_api_key_here';
   const provider = process.env.GROQ_API_KEY ? 'groq' : process.env.GEMINI_API_KEY ? 'gemini' : 'anthropic';
