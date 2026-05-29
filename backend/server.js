@@ -696,3 +696,5 @@ app.listen(PORT, () => {
   const provider  = groqKey ? 'Groq (llama-3.3-70b)' : geminiKey ? 'Gemini' : 'Claude/OpenAI';
   console.log(`JARVIS backend :${PORT} | mode=${hasKey ? `LIVE (✅ ${provider})` : 'MOCK'}`);
 });
+
+module.exports = app;

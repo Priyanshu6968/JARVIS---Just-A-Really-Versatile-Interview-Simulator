@@ -3,7 +3,7 @@ import LandingScreen    from './components/LandingScreen';
 import InterviewScreen  from './components/InterviewScreen';
 import FeedbackModal    from './components/FeedbackModal';
 
-const API = 'http://localhost:5000/api/interview';
+const API = import.meta.env.PROD ? '/api/interview' : 'http://localhost:5000/api/interview';
 
 const SWE_MASTER_PROMPT = `You are an elite Software Engineering (SWE) Interviewer conducting a rigorous, comprehensive technical interview for a Software Engineer (SDE) position. 
 
