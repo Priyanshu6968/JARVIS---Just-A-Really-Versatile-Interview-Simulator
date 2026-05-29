@@ -870,10 +870,13 @@ export default function InterviewScreen({
         style={{ background: 'rgba(10, 15, 28, 0.72)', backdropFilter: 'blur(14px)' }}>
 
         {/* Logo */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-black text-sm shadow-lg"
-            style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>J</div>
-          <span className="text-white font-extrabold tracking-wide hidden sm:block text-sm">JARVIS</span>
+        <div className="flex items-center gap-2 shrink-0 select-none">
+          <img 
+            src="/jarvis_logo.png" 
+            alt="JARVIS Logo" 
+            className="h-8 w-auto object-contain"
+            style={{ filter: 'drop-shadow(0 0 10px rgba(34,211,238,0.3))' }}
+          />
         </div>
 
         <div className="w-px h-5 bg-navy-700 shrink-0" />

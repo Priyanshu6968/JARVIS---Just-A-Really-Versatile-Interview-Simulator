@@ -24,6 +24,74 @@ const PROBLEMS = [
   },
 ];
 
+const BENEFITS = [
+  {
+    id: 'velocity',
+    icon: '⚡',
+    title: 'Accelerate LLD Velocity',
+    tagline: 'WEEKS TO DAYS',
+    desc: 'Compress architectural study loops with immediate LLD evaluations. Run unlimited mock sessions on enterprise booking, parking, and expense group models.',
+    side: 'left',
+  },
+  {
+    id: 'objectivity',
+    icon: '🧠',
+    title: 'Objective AI Assessment',
+    tagline: '100% BIAS-FREE',
+    desc: 'Grade architectural decisions solely on technical trade-offs, design patterns, and edge-case handling. Standardized and purely objective feedback.',
+    side: 'left',
+  },
+  {
+    id: 'sandbox',
+    icon: '✏️',
+    title: 'Interactive Sandbox',
+    tagline: 'VISUAL SYSTEM DIAGRAMS',
+    desc: 'Model classes, relate databases, and draft structural design patterns dynamically on our fully integrated Excalidraw design canvas.',
+    side: 'right',
+  },
+  {
+    id: 'voice',
+    icon: '🎙️',
+    title: 'Voice-First Interface',
+    tagline: 'SPOKEN CONVERSATION',
+    desc: 'Practice defending your design exactly like a real-world interview. Speak naturally with JARVIS and receive instant spoken feedback.',
+    side: 'right',
+  },
+];
+
+function BenefitCard({ title, tagline, desc, icon }) {
+  return (
+    <div className="rounded-2xl p-5 border transition-all duration-300 hover:scale-[1.02] flex flex-col gap-2 group w-full"
+      style={{
+        background: 'rgba(4,14,26,0.72)',
+        backdropFilter: 'blur(16px)',
+        borderColor: 'rgba(34,211,238,0.14)',
+        boxShadow: '0 0 30px rgba(34,211,238,0.02), inset 0 1px 0 rgba(255,255,255,0.02)'
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = 'rgba(34,211,238,0.45)';
+        e.currentTarget.style.boxShadow = '0 0 24px rgba(34,211,238,0.12), inset 0 1px 0 rgba(255,255,255,0.03)';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = 'rgba(34,211,238,0.14)';
+        e.currentTarget.style.boxShadow = '0 0 30px rgba(34,211,238,0.02), inset 0 1px 0 rgba(255,255,255,0.02)';
+      }}
+    >
+      <div className="flex items-center gap-3">
+        <span className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
+          style={{ background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.22)', color: '#22d3ee' }}>
+          {icon}
+        </span>
+        <div className="flex flex-col text-left">
+          <span className="text-[9px] font-black tracking-wider text-cyan-400/60 uppercase">{tagline}</span>
+          <h3 className="text-white font-bold text-sm tracking-tight">{title}</h3>
+        </div>
+      </div>
+      <p className="text-xs leading-relaxed text-left" style={{ color: '#64808c' }}>{desc}</p>
+    </div>
+  );
+}
+
 // ─── Slow-drifting light-blue dots (no connection lines) ─────────────────────
 function ParticleField() {
   const canvasRef = useRef(null);
@@ -218,6 +286,16 @@ export default function LandingScreen({ onStart }) {
     >
       <ParticleField />
 
+      {/* Sleek Floating branding logo badge in top-left HUD corner */}
+      <div className="absolute top-6 left-8 z-30 flex items-center gap-2 pointer-events-auto select-none">
+        <img 
+          src="/jarvis_logo.png" 
+          alt="JARVIS Logo" 
+          className="h-8 w-auto object-contain"
+          style={{ filter: 'drop-shadow(0 0 10px rgba(34,211,238,0.3))' }}
+        />
+      </div>
+
       {/* Eye tracking overlay — fixed over robot image */}
       <EyeOverlay mousePos={mousePos} imgRef={imgRef} />
 
@@ -241,27 +319,11 @@ export default function LandingScreen({ onStart }) {
       {/* ══ SCROLLABLE CONTENT ════════════════════════════════════════════════ */}
       <div className="relative z-10 flex flex-col items-center">
 
-        {/* ── SECTION 1: Robot hero (full viewport) ── */}
-        <div className="w-full flex flex-col items-center" style={{ minHeight: '100vh', position: 'relative' }}>
+        {/* ── SECTION 1: Robot hero (Compacted to peak the form below) ── */}
+        <div className="w-full flex flex-col items-center justify-between pt-6" style={{ height: '76vh', minHeight: '76vh', position: 'relative' }}>
 
-          {/* Top branding */}
-          <div className="flex flex-col items-center gap-1 pt-8 pb-2 z-10">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xl text-white"
-                style={{ background: 'linear-gradient(135deg,#22d3ee,#3b82f6)', boxShadow: '0 0 24px rgba(34,211,238,0.6)' }}>
-                J
-              </div>
-              <h1 className="text-5xl font-black tracking-tighter" style={{ color: '#e0f9ff', textShadow: '0 0 40px rgba(34,211,238,0.55)' }}>
-                JARVIS
-              </h1>
-            </div>
-            <p className="text-[11px] font-semibold tracking-[0.25em] uppercase" style={{ color: '#22d3ee', opacity: 0.75 }}>
-              Just A Really Versatile Interview Simulator
-            </p>
-          </div>
-
-          {/* Robot image — fills most of viewport */}
-          <div className="relative flex-1 flex items-center justify-center w-full" style={{ maxHeight: '78vh' }}>
+          {/* Robot image — fits within compact height */}
+          <div className="relative flex items-center justify-center w-full" style={{ height: '60vh', maxHeight: '60vh' }}>
             {/* Ambient glow behind robot */}
             <div className="absolute inset-0 pointer-events-none" style={{
               background: 'radial-gradient(ellipse at 50% 55%, rgba(34,211,238,0.12) 0%, rgba(34,211,238,0.04) 40%, transparent 70%)',
@@ -278,7 +340,7 @@ export default function LandingScreen({ onStart }) {
               alt="JARVIS Robot"
               style={{
                 height: '100%',
-                maxHeight: '72vh',
+                maxHeight: '56vh',
                 width: 'auto',
                 objectFit: 'contain',
                 display: 'block',
@@ -300,21 +362,17 @@ export default function LandingScreen({ onStart }) {
               }}/>
             </div>
 
-            {/* Floating side badges */}
-            <div className="absolute left-4 top-1/4 flex flex-col gap-3 pointer-events-none">
-              {[['⚡','Voice AI'],['🧠','LLD Expert'],['🎯','4 Phases']].map(([icon, label]) => (
-                <div key={label} className="px-3 py-1.5 rounded-xl text-xs font-semibold border"
-                  style={{ background: 'rgba(2,12,22,0.88)', backdropFilter: 'blur(12px)', borderColor: 'rgba(34,211,238,0.3)', color: '#7dd8f0', boxShadow: '0 0 12px rgba(34,211,238,0.08)' }}>
-                  {icon} {label}
-                </div>
+            {/* Left HUD Benefit Cards (Desktop only) */}
+            <div className="hidden lg:flex lg:flex-col gap-4 absolute left-4 xl:left-16 top-1/2 -translate-y-1/2 w-80 z-20 pointer-events-auto">
+              {BENEFITS.filter(b => b.side === 'left').map(b => (
+                <BenefitCard key={b.id} {...b} />
               ))}
             </div>
-            <div className="absolute right-4 top-1/3 flex flex-col gap-3 pointer-events-none">
-              {[['📊','Smart Feedback'],['🎙️','Voice Input'],['✏️','Live Canvas']].map(([icon, label]) => (
-                <div key={label} className="px-3 py-1.5 rounded-xl text-xs font-semibold border"
-                  style={{ background: 'rgba(2,12,22,0.88)', backdropFilter: 'blur(12px)', borderColor: 'rgba(34,211,238,0.3)', color: '#7dd8f0', boxShadow: '0 0 12px rgba(34,211,238,0.08)' }}>
-                  {icon} {label}
-                </div>
+
+            {/* Right HUD Benefit Cards (Desktop only) */}
+            <div className="hidden lg:flex lg:flex-col gap-4 absolute right-4 xl:right-16 top-1/2 -translate-y-1/2 w-80 z-20 pointer-events-auto">
+              {BENEFITS.filter(b => b.side === 'right').map(b => (
+                <BenefitCard key={b.id} {...b} />
               ))}
             </div>
 
@@ -334,12 +392,19 @@ export default function LandingScreen({ onStart }) {
           </div>
 
           {/* Scroll cue */}
-          <div className="flex flex-col items-center gap-2 py-5" style={{ color: '#1a5a6a' }}>
+          <div className="flex flex-col items-center gap-1.5 py-3" style={{ color: '#1a5a6a' }}>
             <span className="text-[10px] font-bold tracking-[0.3em] uppercase">Configure Interview</span>
             <svg width="22" height="14" viewBox="0 0 22 14" fill="none" style={{ animation: 'arrowBounce 1.6s ease-in-out infinite' }}>
               <path d="M2 2L11 12L20 2" stroke="#22d3ee" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.55"/>
             </svg>
           </div>
+        </div>
+
+        {/* Mobile Benefits Grid (Visible only on mobile viewports below lg) */}
+        <div className="lg:hidden flex flex-col md:grid md:grid-cols-2 gap-4 w-full max-w-xl px-5 py-6">
+          {BENEFITS.map(b => (
+            <BenefitCard key={b.id} {...b} />
+          ))}
         </div>
 
         {/* ── SECTION 2: Form ── */}
@@ -454,12 +519,277 @@ export default function LandingScreen({ onStart }) {
             <span style={{ display:'inline-block', transition:'transform 0.2s', transform: hover && canStart ? 'translateX(5px)' : 'translateX(0)', fontSize:'1.2em' }}>→</span>
           </button>
         </div>
+
+        {/* ── SECTION 3: Decoding the LLD Interviewer's Mind ── */}
+        <div className="w-full max-w-5xl px-5 py-16 flex flex-col items-center gap-12 border-t" style={{ borderColor: 'rgba(34,211,238,0.08)' }}>
+          
+          <div className="text-center flex flex-col gap-2 max-w-2xl">
+            <span className="text-xs font-black tracking-[0.25em] text-cyan-400 uppercase">THE COGNITIVE LOOP</span>
+            <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">Decoding the LLD Interviewer's Mind</h2>
+            <p className="text-sm" style={{ color: '#64808c' }}>
+              Real-world interviewers don't just look for code that works. They evaluate how you communicate, how you navigate ambiguity, and how you design under constraint.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
+            {[
+              {
+                icon: '📋',
+                title: 'Constraint Clarification',
+                tagline: 'PHASE 1 & 2',
+                desc: 'Interviewers look for candidates who pause and ask clarifying questions first. Rushing to code without establishing scale, boundaries, or vehicle assumptions is the number one failure pattern.'
+              },
+              {
+                icon: '🧠',
+                title: 'Trade-Off Mastery',
+                tagline: 'ARCHITECTURAL DEPTH',
+                desc: 'There is no single "perfect" solution. Interviewers test your engineering maturity by asking you to defend extensibility vs over-engineering, read vs write performance, or SQL vs NoSQL layouts.'
+              },
+              {
+                icon: '✏️',
+                title: 'Visual Clarity (UML)',
+                tagline: 'PHASE 3',
+                desc: 'A class diagram is a team communication tool. You are judged on your ability to establish clean relationship interfaces, demonstrating clear aggregation, composition, and logical dependency boundaries.'
+              },
+              {
+                icon: '💾',
+                title: 'Database Schema Modeling',
+                tagline: 'PHASE 4',
+                desc: 'Interviewers evaluate your awareness of the storage layer. They analyze if you choose database structures, primary keys, and concurrent transaction locks that scale correctly under write-heavy loads.'
+              }
+            ].map((insight, idx) => (
+              <div key={idx} className="rounded-2xl p-5 border transition-all duration-300 hover:scale-[1.02] flex flex-col gap-3 group"
+                style={{
+                  background: 'rgba(4,14,26,0.55)',
+                  backdropFilter: 'blur(16px)',
+                  borderColor: 'rgba(34,211,238,0.12)',
+                  boxShadow: '0 0 30px rgba(34,211,238,0.01), inset 0 1px 0 rgba(255,255,255,0.01)'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = 'rgba(34,211,238,0.35)';
+                  e.currentTarget.style.boxShadow = '0 0 24px rgba(34,211,238,0.08), inset 0 1px 0 rgba(255,255,255,0.02)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = 'rgba(34,211,238,0.12)';
+                  e.currentTarget.style.boxShadow = '0 0 30px rgba(34,211,238,0.01), inset 0 1px 0 rgba(255,255,255,0.01)';
+                }}
+              >
+                <span className="w-9 h-9 rounded-xl flex items-center justify-center text-sm"
+                  style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.18)', color: '#22d3ee' }}>
+                  {insight.icon}
+                </span>
+                <div className="flex flex-col text-left">
+                  <span className="text-[9px] font-black tracking-wider text-cyan-400/50 uppercase">{insight.tagline}</span>
+                  <h3 className="text-white font-bold text-base tracking-tight mt-0.5">{insight.title}</h3>
+                </div>
+                <p className="text-xs leading-relaxed text-left" style={{ color: '#526b78' }}>{insight.desc}</p>
+              </div>
+            ))}
+          </div>
+
+        </div>
+
+        {/* ── SECTION 4: Why Practice with JARVIS? ── */}
+        <div className="w-full max-w-5xl px-5 py-16 flex flex-col items-center gap-12 border-t" style={{ borderColor: 'rgba(34,211,238,0.08)' }}>
+          
+          <div className="text-center flex flex-col gap-2 max-w-2xl">
+            <span className="text-xs font-black tracking-[0.25em] text-cyan-400 uppercase">PEDAGOGICAL VALUE</span>
+            <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">Why Practice with JARVIS?</h2>
+            <p className="text-sm" style={{ color: '#64808c' }}>
+              Unlike static mock questions or passive video courses, JARVIS simulates the interactive, live stress of standard tech screen interviews.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
+            {[
+              {
+                icon: '🔁',
+                title: 'Immediate Feedback Loop Closure',
+                desc: 'Real interviews happen once, and feedback is notoriously scarce. JARVIS analyzes your structural patterns, points out architectural gaps, and provides detailed tabbed feedback loops instantly.'
+              },
+              {
+                icon: '🎙️',
+                title: 'Spoken Verbal Conditioning',
+                desc: 'Many engineers know patterns but struggle to articulate them clearly under pressure. Speak directly with JARVIS to build the oral communication muscle memory required for corporate loops.'
+              },
+              {
+                icon: '🎨',
+                title: 'Interactive Excalidraw Whiteboard',
+                desc: 'Model your designs exactly like you would on a real call. Our canvas integrates into Phases 3 & 4 so you draw UML classes and draft database schema mappings concurrently with your spoken answers.'
+              },
+              {
+                icon: '⏱️',
+                title: 'Live Simulated Stress Conditioning',
+                desc: 'Practice under a live tracking timer, managing requirements and architectural trade-offs in a safety sandbox, preparing you to remain calm and structured under actual interview timers.'
+              }
+            ].map((benefit, idx) => (
+              <div key={idx} className="rounded-2xl p-6 border flex gap-4 text-left"
+                style={{
+                  background: 'rgba(2,8,18,0.85)',
+                  borderColor: 'rgba(34,211,238,0.1)',
+                  boxShadow: '0 0 30px rgba(34,211,238,0.01)',
+                }}
+              >
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+                  style={{ background: 'rgba(34,211,238,0.06)', border: '1px solid rgba(34,211,238,0.15)', color: '#22d3ee' }}>
+                  {benefit.icon}
+                </span>
+                <div className="flex flex-col gap-1.5 text-left">
+                  <h3 className="text-white font-bold text-base tracking-tight">{benefit.title}</h3>
+                  <p className="text-xs leading-relaxed" style={{ color: '#526b78' }}>{benefit.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+        </div>
+
+        {/* ── SECTION 5: Immersive "Ready to Rehearse?" CTA Block ── */}
+        <div className="w-full max-w-xl px-5 pb-12 pt-8 flex flex-col items-center gap-6 text-center border-t" style={{ borderColor: 'rgba(34,211,238,0.08)' }}>
+          <div className="flex flex-col gap-2">
+            <h3 className="text-xl font-black text-white tracking-tight">Ready to challenge your LLD limits?</h3>
+            <p className="text-xs" style={{ color: '#64808c' }}>
+              No accounts, no payment, and no claims. Set up your candidate profile above and start coding with JARVIS immediately.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              const el = document.getElementById('candidate-name');
+              if (el) {
+                el.focus();
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
+            className="px-6 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase border transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
+            style={{
+              background: 'rgba(34,211,238,0.08)',
+              borderColor: 'rgba(34,211,238,0.3)',
+              color: '#22d3ee',
+              boxShadow: '0 0 15px rgba(34,211,238,0.1)'
+            }}
+          >
+            Scroll to Setup Profile ↑
+          </button>
+        </div>
+
+        {/* ── SECTION 6: Premium Corporate Footer (Reference: eightfold.ai) ── */}
+        <footer className="w-full border-t py-16 px-6 md:px-12 lg:px-24 flex flex-col gap-12" 
+          style={{ 
+            borderColor: 'rgba(34,211,238,0.08)', 
+            background: 'linear-gradient(180deg, rgba(2,8,18,0.4) 0%, rgba(1,4,10,0.9) 100%)',
+            backdropFilter: 'blur(20px)',
+            marginBottom: '40px' // accounts for the fixed bottom status bar height
+          }}>
+          
+          <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
+            
+            {/* Left Brand Column */}
+            <div className="lg:col-span-6 flex flex-col gap-6 text-left">
+              <div className="flex items-center gap-2">
+                <img 
+                  src="/jarvis_logo.png" 
+                  alt="JARVIS Logo" 
+                  className="h-9 w-auto object-contain"
+                  style={{ filter: 'drop-shadow(0 0 10px rgba(34,211,238,0.35))' }}
+                />
+              </div>
+              
+              <p className="text-xs leading-relaxed max-w-lg" style={{ color: '#526b78' }}>
+                JARVIS is an agentic talent evaluation simulator that gives every software developer and tech recruiter the capability to practice, refine, and master low-level system designs. Our AI-native evaluation system probes requirements, gauges trade-offs, and validates visual schema configurations with objective, real-time rigor and instant scorecard feedback.
+              </p>
+              
+              <span className="text-xs font-semibold italic tracking-wide" style={{ color: '#22d3ee' }}>
+                Architectural Intelligence, human led
+              </span>
+              
+            </div>
+            
+            {/* Learn More Column */}
+            <div className="lg:col-span-3 flex flex-col gap-4 text-left">
+              <span className="text-xs font-black uppercase tracking-widest text-white">Learn more</span>
+              <ul className="flex flex-col gap-2.5 text-xs">
+                {['AI Interviewer', 'Constraint Analysis', 'UML Whiteboard', 'Schema Sandbox', 'Scorecard Analytics'].map(item => (
+                  <li key={item}>
+                    <a href="#candidate-name" onClick={e => {
+                      e.preventDefault();
+                      const el = document.getElementById('candidate-name');
+                      if (el) {
+                        el.focus();
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }} className="transition-colors duration-300 hover:text-cyan-400" style={{ color: '#4a6776' }}>
+                      {item}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            
+            {/* Contact & Support Column */}
+            <div className="lg:col-span-3 flex flex-col gap-4 text-left">
+              <span className="text-xs font-black uppercase tracking-widest text-white">Contact & Support</span>
+              
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-cyan-300">Priyanshu Nigam</span>
+                  <span className="text-[9px] tracking-wider uppercase font-semibold text-cyan-500/50 mt-0.5">Lead Architect & Developer</span>
+                </div>
+                
+                <div className="flex flex-col gap-2 text-xs">
+                  {/* Phone */}
+                  <a href="tel:+917497030568" className="flex items-center gap-2 group transition-colors duration-300 hover:text-cyan-400" style={{ color: '#4a6776' }}>
+                    <span className="text-sm group-hover:scale-110 transition-transform">📞</span>
+                    <span className="font-mono text-[11px]">+91 74970 30568</span>
+                  </a>
+                  
+                  {/* Email */}
+                  <a href="mailto:priyanshunigam469@gmail.com" className="flex items-center gap-2 group transition-colors duration-300 hover:text-cyan-400" style={{ color: '#4a6776' }}>
+                    <span className="text-sm group-hover:scale-110 transition-transform">✉️</span>
+                    <span className="font-mono text-[11px]">priyanshunigam469@gmail.com</span>
+                  </a>
+                </div>
+              </div>
+              
+            </div>
+            
+          </div>
+          
+          {/* Bottom Copyright & Back to Top Row */}
+          <div className="w-full max-w-7xl mx-auto border-t pt-8 flex flex-col md:flex-row items-center justify-between gap-6" 
+            style={{ borderColor: 'rgba(34,211,238,0.06)' }}>
+            
+            <span className="text-[10px] font-mono" style={{ color: '#2a4555' }}>
+              © JARVIS, 2026. All rights reserved worldwide.
+            </span>
+            
+            <button
+              onClick={() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] group"
+              style={{ 
+                background: 'rgba(34,211,238,0.05)', 
+                border: '1px solid rgba(34,211,238,0.12)', 
+                color: '#22d3ee' 
+              }}
+            >
+              <span>Back to top</span>
+              <span className="group-hover:-translate-y-0.5 transition-transform">↑</span>
+            </button>
+            
+          </div>
+          
+        </footer>
+
       </div>
 
       {/* Fixed status bar */}
       <div className="fixed bottom-0 left-0 right-0 px-5 py-2 flex items-center justify-between text-[10px] font-mono z-30"
         style={{ background: 'rgba(1,6,14,0.88)', borderTop: '1px solid rgba(34,211,238,0.1)', color: '#1a4050', backdropFilter: 'blur(10px)' }}>
-        <span>JARVIS v2.0 · LLD Interview Simulator</span>
+        <div className="flex items-center gap-2">
+          <img src="/jarvis_logo.png" alt="JARVIS Logo" className="h-3.5 w-auto object-contain opacity-55" />
+          <span className="text-[9px] tracking-wide" style={{ color: '#2a5a6a' }}>v2.0 · LLD Interview Simulator</span>
+        </div>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"/>
