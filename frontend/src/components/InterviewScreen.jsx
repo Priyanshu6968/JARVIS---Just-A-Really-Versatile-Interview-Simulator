@@ -1397,11 +1397,11 @@ export default function InterviewScreen({
             <div className="flex justify-between items-center px-0.5">
               <div className="flex items-center gap-3 flex-1 mr-4">
                 <span className="text-[10px] text-navy-800 shrink-0">SWE Technical Interview Simulator</span>
-                {micToggleCount >= 3 && (
+                {micToggleCount >= 2 && (
                   <input
                     type="text"
                     placeholder="write your answer (fallback)..."
-                    className="bg-transparent border-none outline-none text-[10px] text-gray-600 placeholder-navy-800 flex-1 min-w-0"
+                    className="bg-transparent border-none outline-none text-[11px] text-gray-400 placeholder-gray-600 flex-1 min-w-0"
                     onKeyDown={e => {
                       if (e.key === 'Enter' && e.target.value.trim()) {
                         handleSend(e.target.value);
