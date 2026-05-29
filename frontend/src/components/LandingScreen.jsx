@@ -269,9 +269,20 @@ export default function LandingScreen({ onStart }) {
   const [prob,  setProb]  = useState(PROBLEMS[0]);
   const [hover, setHover] = useState(false);
   const imgRef    = useRef(null);
+  const robotWrapperRef = useRef(null);
   const mousePos  = useRef({ x: 0, y: 0 }); // use ref to avoid re-renders in canvas loop
 
   const canStart = name.trim().length > 0;
+
+  const handleScroll = useCallback((e) => {
+    const scrollTop = e.currentTarget.scrollTop;
+    const maxScroll = 450;
+    const ratio = Math.min(scrollTop / maxScroll, 1);
+    if (robotWrapperRef.current) {
+      // Fade opacity down from 1.0 to 0.08 (8% visible)
+      robotWrapperRef.current.style.opacity = 1.0 - ratio * 0.92;
+    }
+  }, []);
 
   useEffect(() => {
     const fn = e => { mousePos.current = { x: e.clientX, y: e.clientY }; };
@@ -282,6 +293,7 @@ export default function LandingScreen({ onStart }) {
   return (
     <div
       className="h-full w-full overflow-y-auto relative"
+      onScroll={handleScroll}
       style={{ background: 'radial-gradient(ellipse at 50% 0%, #051828 0%, #020c14 50%, #000810 100%)' }}
     >
       <ParticleField />
@@ -298,6 +310,70 @@ export default function LandingScreen({ onStart }) {
 
       {/* Eye tracking overlay — fixed over robot image */}
       <EyeOverlay mousePos={mousePos} imgRef={imgRef} />
+
+      {/* Immersive Fixed Robot Backdrop Container (fades on scroll) */}
+      <div 
+        ref={robotWrapperRef}
+        className="fixed inset-0 pointer-events-none z-10 flex items-center justify-center"
+        style={{ 
+          height: '76vh', 
+          top: '0',
+          transition: 'opacity 0.05s ease-out',
+          willChange: 'opacity'
+        }}
+      >
+        <div className="relative flex items-center justify-center w-full h-full" style={{ height: '60vh', maxHeight: '60vh' }}>
+          {/* Ambient glow behind robot */}
+          <div className="absolute inset-0 pointer-events-none" style={{
+            background: 'radial-gradient(ellipse at 50% 55%, rgba(34,211,238,0.12) 0%, rgba(34,211,238,0.04) 40%, transparent 70%)',
+          }}/>
+          {/* Bottom ground glow */}
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-80 h-12 pointer-events-none" style={{
+            background: 'radial-gradient(ellipse, rgba(34,211,238,0.45) 0%, transparent 70%)',
+            filter: 'blur(12px)',
+          }}/>
+
+          <img
+            ref={imgRef}
+            src="/robot.png"
+            alt="JARVIS Robot"
+            style={{
+              height: '100%',
+              maxHeight: '56vh',
+              width: 'auto',
+              objectFit: 'contain',
+              display: 'block',
+              userSelect: 'none',
+              mixBlendMode: 'screen',
+              filter: 'drop-shadow(0 0 50px rgba(34,211,238,0.35)) brightness(1.08)',
+            }}
+            draggable={false}
+          />
+
+          {/* HUD scan line sweeping down over robot */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ mixBlendMode: 'screen' }}>
+            <div style={{
+              position: 'absolute', left: 0, right: 0, height: 2,
+              background: 'linear-gradient(90deg, transparent 0%, rgba(34,211,238,0.6) 50%, transparent 100%)',
+              animation: 'scanDown 4s linear infinite',
+            }}/>
+          </div>
+
+          {/* HUD targeting reticle on robot face area */}
+          <div className="absolute pointer-events-none" style={{
+            top: '12%', left: '50%', transform: 'translateX(-50%)',
+            width: 120, height: 120,
+            border: '1px solid rgba(34,211,238,0.25)',
+            borderRadius: '50%',
+            animation: 'reticlePulse 3s ease-in-out infinite',
+          }}>
+            <div style={{ position:'absolute', top: -6, left: '50%', transform: 'translateX(-50%)', width: 12, height: 12, borderTop: '2px solid rgba(34,211,238,0.7)', borderRight: '2px solid rgba(34,211,238,0.7)' }}/>
+            <div style={{ position:'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%) rotate(180deg)', width: 12, height: 12, borderTop: '2px solid rgba(34,211,238,0.7)', borderRight: '2px solid rgba(34,211,238,0.7)' }}/>
+            <div style={{ position:'absolute', left: -6, top: '50%', transform: 'translateY(-50%) rotate(-90deg)', width: 12, height: 12, borderTop: '2px solid rgba(34,211,238,0.7)', borderRight: '2px solid rgba(34,211,238,0.7)' }}/>
+            <div style={{ position:'absolute', right: -6, top: '50%', transform: 'translateY(-50%) rotate(90deg)', width: 12, height: 12, borderTop: '2px solid rgba(34,211,238,0.7)', borderRight: '2px solid rgba(34,211,238,0.7)' }}/>
+          </div>
+        </div>
+      </div>
 
       {/* Grid */}
       <div className="fixed inset-0 pointer-events-none z-0" style={{
@@ -319,49 +395,12 @@ export default function LandingScreen({ onStart }) {
       {/* ══ SCROLLABLE CONTENT ════════════════════════════════════════════════ */}
       <div className="relative z-10 flex flex-col items-center">
 
-        {/* ── SECTION 1: Robot hero (Compacted to peak the form below) ── */}
+        {/* ── SECTION 1: Robot hero (Compacted spacer & framing cards) ── */}
         <div className="w-full flex flex-col items-center justify-between pt-6" style={{ height: '76vh', minHeight: '76vh', position: 'relative' }}>
 
-          {/* Robot image — fits within compact height */}
+          {/* Empty spacing box matching the fixed backdrop dimensions */}
           <div className="relative flex items-center justify-center w-full" style={{ height: '60vh', maxHeight: '60vh' }}>
-            {/* Ambient glow behind robot */}
-            <div className="absolute inset-0 pointer-events-none" style={{
-              background: 'radial-gradient(ellipse at 50% 55%, rgba(34,211,238,0.12) 0%, rgba(34,211,238,0.04) 40%, transparent 70%)',
-            }}/>
-            {/* Bottom ground glow */}
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-80 h-12 pointer-events-none" style={{
-              background: 'radial-gradient(ellipse, rgba(34,211,238,0.45) 0%, transparent 70%)',
-              filter: 'blur(12px)',
-            }}/>
-
-            <img
-              ref={imgRef}
-              src="/robot.png"
-              alt="JARVIS Robot"
-              style={{
-                height: '100%',
-                maxHeight: '56vh',
-                width: 'auto',
-                objectFit: 'contain',
-                display: 'block',
-                userSelect: 'none',
-                // mixBlendMode screen makes the black background of the PNG
-                // blend away into the dark page, submerging the robot into the bg
-                mixBlendMode: 'screen',
-                filter: 'drop-shadow(0 0 50px rgba(34,211,238,0.35)) brightness(1.08)',
-              }}
-              draggable={false}
-            />
-
-            {/* HUD scan line sweeping down over robot */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ mixBlendMode: 'screen' }}>
-              <div style={{
-                position: 'absolute', left: 0, right: 0, height: 2,
-                background: 'linear-gradient(90deg, transparent 0%, rgba(34,211,238,0.6) 50%, transparent 100%)',
-                animation: 'scanDown 4s linear infinite',
-              }}/>
-            </div>
-
+            
             {/* Left HUD Benefit Cards (Desktop only) */}
             <div className="hidden lg:flex lg:flex-col gap-4 absolute left-4 xl:left-16 top-1/2 -translate-y-1/2 w-80 z-20 pointer-events-auto">
               {BENEFITS.filter(b => b.side === 'left').map(b => (
@@ -375,20 +414,7 @@ export default function LandingScreen({ onStart }) {
                 <BenefitCard key={b.id} {...b} />
               ))}
             </div>
-
-            {/* HUD targeting reticle on robot face area */}
-            <div className="absolute pointer-events-none" style={{
-              top: '12%', left: '50%', transform: 'translateX(-50%)',
-              width: 120, height: 120,
-              border: '1px solid rgba(34,211,238,0.25)',
-              borderRadius: '50%',
-              animation: 'reticlePulse 3s ease-in-out infinite',
-            }}>
-              <div style={{ position:'absolute', top: -6, left: '50%', transform: 'translateX(-50%)', width: 12, height: 12, borderTop: '2px solid rgba(34,211,238,0.7)', borderRight: '2px solid rgba(34,211,238,0.7)' }}/>
-              <div style={{ position:'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%) rotate(180deg)', width: 12, height: 12, borderTop: '2px solid rgba(34,211,238,0.7)', borderRight: '2px solid rgba(34,211,238,0.7)' }}/>
-              <div style={{ position:'absolute', left: -6, top: '50%', transform: 'translateY(-50%) rotate(-90deg)', width: 12, height: 12, borderTop: '2px solid rgba(34,211,238,0.7)', borderRight: '2px solid rgba(34,211,238,0.7)' }}/>
-              <div style={{ position:'absolute', right: -6, top: '50%', transform: 'translateY(-50%) rotate(90deg)', width: 12, height: 12, borderTop: '2px solid rgba(34,211,238,0.7)', borderRight: '2px solid rgba(34,211,238,0.7)' }}/>
-            </div>
+            
           </div>
 
           {/* Scroll cue */}
