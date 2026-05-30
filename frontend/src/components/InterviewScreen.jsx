@@ -46,7 +46,7 @@ function barColour(i, total, mode) {
 }
 
 // ─── Frequency visualizer ─────────────────────────────────────────────────────
-function FreqVisualizer({ isSpeaking, micActive }) {
+const FreqVisualizer = React.memo(function FreqVisualizer({ isSpeaking, micActive }) {
   const mode = isSpeaking ? 'speak' : micActive ? 'mic' : 'idle';
   const active = mode !== 'idle';
 
@@ -82,10 +82,10 @@ function FreqVisualizer({ isSpeaking, micActive }) {
       })}
     </div>
   );
-}
+});
 
 // ─── Glowing Neon Canvas Soundwave ──────────────────────────────────────────
-function VoiceWavesCanvas({ isSpeaking, micActive }) {
+const VoiceWavesCanvas = React.memo(function VoiceWavesCanvas({ isSpeaking, micActive }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -225,10 +225,10 @@ function VoiceWavesCanvas({ isSpeaking, micActive }) {
       style={{ opacity: 0.8 }}
     />
   );
-}
+});
 
 // ─── Floating Ambient Particles ───────────────────────────────────────────────
-function AmbientParticles() {
+const AmbientParticles = React.memo(function AmbientParticles() {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -302,10 +302,10 @@ function AmbientParticles() {
   }, []);
 
   return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-0 w-full h-full opacity-70" />;
-}
+});
 
 // ─── Majestic Fullscreen Ambient Sine Waves ──────────────────────────────────
-function AmbientSineWaves({ isSpeaking, micActive }) {
+const AmbientSineWaves = React.memo(function AmbientSineWaves({ isSpeaking, micActive }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -474,10 +474,10 @@ function AmbientSineWaves({ isSpeaking, micActive }) {
       style={{ opacity: 0.95 }}
     />
   );
-}
+});
 
 // ─── Glowing Cyber HUD Brackets (Matches User Reference Images - Vibrant Neon Cyan)
-function CyberHudBrackets({ isSpeaking }) {
+const CyberHudBrackets = React.memo(function CyberHudBrackets({ isSpeaking }) {
   const glowClass = isSpeaking 
     ? 'drop-shadow-[0_0_15px_rgba(34,211,238,0.95)] opacity-100' 
     : 'drop-shadow-[0_0_6px_rgba(34,211,238,0.6)] opacity-75';
@@ -581,10 +581,10 @@ function CyberHudBrackets({ isSpeaking }) {
       </div>
     </>
   );
-}
+});
 
 // ─── Central 3D Rotating Prism Hologram (Double-Pyramid Wireframe - Radiant Neon Cyan) 
-function CentralPrismHologram({ isSpeaking }) {
+const CentralPrismHologram = React.memo(function CentralPrismHologram({ isSpeaking }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -701,10 +701,10 @@ function CentralPrismHologram({ isSpeaking }) {
       style={{ mixBlendMode: 'screen' }}
     />
   );
-}
+});
 
 // ─── Entire Viewport Cockpit HUD (Emerging / sliding open from very center) ──
-function JarvisCockpitHud({ isSpeaking }) {
+const JarvisCockpitHud = React.memo(function JarvisCockpitHud({ isSpeaking }) {
   const opacityVal = isSpeaking ? 0.95 : 0.35;
 
   return (
@@ -720,10 +720,10 @@ function JarvisCockpitHud({ isSpeaking }) {
       
     </div>
   );
-}
+});
 
 // ─── JARVIS orb with sonar rings ──────────────────────────────────────────────
-function JARVISOrb({ isSpeaking, micActive }) {
+const JARVISOrb = React.memo(function JARVISOrb({ isSpeaking, micActive }) {
   return (
     <div className="relative flex-shrink-0 flex items-center justify-center"
       style={{ width: 72, height: 72 }}>
@@ -779,10 +779,10 @@ function JARVISOrb({ isSpeaking, micActive }) {
       </div>
     </div>
   );
-}
+});
 
 // ─── Typing dots ──────────────────────────────────────────────────────────────
-function TypingDots() {
+const TypingDots = React.memo(function TypingDots() {
   return (
     <div className="self-start flex flex-col gap-1 fade-up">
       <div className="flex items-center gap-1 px-4 py-3 glass rounded-2xl rounded-tl-sm">
@@ -793,7 +793,7 @@ function TypingDots() {
       <span className="text-[10px] text-navy-700 ml-1">JARVIS is thinking…</span>
     </div>
   );
-}
+});
 
 // ─── Phase banner ─────────────────────────────────────────────────────────────
 function PhaseBanner({ text, onDone }) {
