@@ -831,6 +831,10 @@ export default function InterviewScreen({
   const [tempProvider,  setTempProvider]  = useState(aiProvider);
   const [tempApiKey,    setTempApiKey]    = useState(aiApiKey);
 
+  // Anti-cheat states
+  const [cheatWarning, setCheatWarning] = useState(null);
+  const cheatCount = useRef(0);
+
   const bottomRef      = useRef(null);
   const recRef         = useRef(null);
   const isMutedRef     = useRef(false);
@@ -847,6 +851,32 @@ export default function InterviewScreen({
   useEffect(() => {
     const t = setInterval(() => setElapsed(s => s + 1), 1000);
     return () => clearInterval(t);
+  }, []);
+
+  // ── Anti-Cheat ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        cheatCount.current++;
+        setCheatWarning(`Tab switching or minimizing the window is strictly prohibited during the interview. This incident has been logged. (Attempt ${cheatCount.current})`);
+      }
+    };
+    
+    const handleCopyPaste = (e) => {
+      e.preventDefault();
+      cheatCount.current++;
+      setCheatWarning(`Copying or pasting text is disabled to maintain the integrity of the interview. (Attempt ${cheatCount.current})`);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('copy', handleCopyPaste);
+    document.addEventListener('paste', handleCopyPaste);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('copy', handleCopyPaste);
+      document.removeEventListener('paste', handleCopyPaste);
+    };
   }, []);
   const fmtTime = s =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -1600,6 +1630,34 @@ export default function InterviewScreen({
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ── ANTI-CHEAT WARNING MODAL ────────────────────────────────────────────── */}
+      {cheatWarning && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ background: 'rgba(220, 38, 38, 0.15)', backdropFilter: 'blur(12px)' }}>
+          <div className="max-w-md w-full bg-navy-900 border-2 border-red-500/50 rounded-2xl p-6 shadow-[0_0_50px_rgba(220,38,38,0.3)] relative overflow-hidden text-center">
+            <div className="absolute top-0 inset-x-0 h-1 bg-red-500 animate-pulse" />
+            
+            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4 border border-red-500/30 text-red-400">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            
+            <h2 className="text-xl font-bold text-red-400 mb-2 uppercase tracking-widest">Warning</h2>
+            <p className="text-gray-300 text-sm mb-6 leading-relaxed">
+              {cheatWarning}
+            </p>
+            
+            <button 
+              onClick={() => setCheatWarning(null)}
+              className="px-8 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-lg text-sm font-bold uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
+            >
+              I Understand
+            </button>
           </div>
         </div>
       )}
