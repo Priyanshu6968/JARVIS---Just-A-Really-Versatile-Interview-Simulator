@@ -7,7 +7,7 @@ import { Play, ArrowRight, Volume2, VolumeX, Sparkles, Mic, PenTool, BarChart3 }
 // Default is a self-contained tech "data network" loop in /public.
 //   • local file:  '/tech-bg.mp4'
 //   • HLS stream:  'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
-const VIDEO_SRC = '/tech-bg.mp4';
+const VIDEO_SRC = '/tech-bg.mp4?v=4k';
 
 // Glassmorphic-header nav links. They smooth-focus the candidate field — the
 // single interactive target on this single-screen hero.
